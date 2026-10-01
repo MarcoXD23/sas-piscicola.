@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Fondo Squircle Institucional AquaSmart -->
+  <rect width="512" height="512" rx="128" fill="#0C332F"/>
+  <!-- Estanque Cenital (Espejo de Agua) en #146B63 -->
+  <ellipse cx="256" cy="256" rx="176" ry="118" fill="#146B63"/>
+  <!-- Curva de Biometría, Telemetría IoT & Flujo en #F5F4EE -->
+  <path d="M 68 256 H 136 C 176 256, 196 176, 240 176 C 284 176, 296 336, 340 336 C 380 336, 396 256, 444 256" 
+        fill="none" stroke="#F5F4EE" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
