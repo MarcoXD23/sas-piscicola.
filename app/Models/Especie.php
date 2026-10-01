@@ -24,6 +24,7 @@ class Especie extends Model
         'familia',
         'clima',
         'foto_url',
+        'imagen_url',
         'temperatura_min',
         'temperatura_max',
         'oxigeno_min_mg_l',
@@ -60,7 +61,20 @@ class Especie extends Model
     }
 
     /**
-     * Retorna la URL de la foto o una imagen representativa local por defecto.
+     * Ruta relativa de la imagen local para asset().
+     */
+    public function getImagenUrlAttribute(): string
+    {
+        return $this->foto_url ?? 'images/peces/mojarra_roja.jpg';
+    }
+
+    public function setImagenUrlAttribute($value): void
+    {
+        $this->attributes['foto_url'] = $value;
+    }
+
+    /**
+     * Retorna la URL absoluta de la foto o una imagen representativa local por defecto.
      */
     public function getFotoAttribute(): string
     {
@@ -68,7 +82,7 @@ class Especie extends Model
             return asset($this->foto_url);
         }
 
-        return asset('images/peces/estanque_cultivo.jpg');
+        return asset('images/peces/mojarra_roja.jpg');
     }
 
     /**

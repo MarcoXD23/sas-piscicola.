@@ -1,6 +1,6 @@
-# Reglas y Directivas del Proyecto AquaSmart
+# Reglas y Directivas del Proyecto El SAS Piscícola
 
-- **Proyecto:** AquaSmart, SaaS multi-tenant para fincas piscícolas. Stack: Laravel + PostgreSQL + API RESTful. Zona horaria America/Bogota.
+- **Proyecto:** El SAS Piscícola, SaaS multi-tenant para fincas piscícolas. Stack: Laravel + PostgreSQL + API RESTful. Zona horaria America/Bogota.
 - **Multi-Tenancy:** Toda tabla de negocio lleva tenant_id y todo se filtra por tenant (global scope).
 - **Roles:** propietario, tecnico_acuicola, operario_alimentador, celador.
 - **Alcance Estricto:** Haz SOLO lo que pida el prompt actual. No agregues módulos, páginas, paquetes ni datos de ejemplo que no se pidan.

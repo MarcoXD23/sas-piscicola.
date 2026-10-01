@@ -137,7 +137,7 @@
                  class="group bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-cyan-500/50 transition-all duration-300 overflow-hidden flex flex-col">
                 <!-- Imagen Real con Badge de Clima -->
                 <div class="relative h-48 w-full overflow-hidden bg-slate-950 rounded-t-xl">
-                    <img src="{{ asset($especie->foto_url) }}"
+                    <img src="{{ asset($especie->imagen_url ?? $especie->foto_url ?? 'images/peces/mojarra_roja.jpg') }}"
                          alt="{{ $especie->nombre_comun }}"
                          class="w-full h-48 object-cover rounded-t-xl group-hover:scale-105 transition-transform duration-500 ease-out"
                          loading="lazy">
@@ -284,7 +284,7 @@
 
             <!-- Cabecera del Modal con Foto y Título -->
             <div class="relative h-44 sm:h-52 bg-slate-950 overflow-hidden">
-                <img :src="activeModal ? '/' + activeModal.foto_url : ''"
+                <img :src="activeModal ? '/' + (activeModal.imagen_url || activeModal.foto_url || 'images/peces/mojarra_roja.jpg') : ''"
                      :alt="activeModal ? activeModal.nombre_comun : ''"
                      class="h-full w-full object-cover object-center filter brightness-90">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent"></div>

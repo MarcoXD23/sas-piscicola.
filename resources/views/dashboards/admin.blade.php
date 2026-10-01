@@ -137,7 +137,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Caja Recaudada Hoy</p>
-                    <h3 class="text-2xl font-black text-slate-900 mt-1">${{ number_format($metricas_operativas['recaudo_ventas_hoy'], 0, ',', '.') }}</h3>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1">${{ number_format($metricas_operativas['recaudo_ventas_hoy'] ?? 0, 0, ',', '.') }}</h3>
                 </div>
                 <div class="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-inner border border-emerald-100">
                     <i class="fa-solid fa-cash-register"></i>

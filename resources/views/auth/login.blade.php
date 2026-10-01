@@ -12,7 +12,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="AquaSmart">
+    <meta name="apple-mobile-web-app-title" content="El SAS Piscícola">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
@@ -140,10 +140,10 @@
                                 required
                                 class="block w-full rounded-md border border-slate-300 bg-white py-2 px-3 pr-8 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition appearance-none cursor-pointer">
                             <option value="" disabled>Selecciona tu Rol</option>
-                            <option value="propietario">Propietario / Gerente General (Jefe Mayor)</option>
-                            <option value="administrador">Administrador / Técnico Acuícola</option>
-                            <option value="trabajador">Trabajador de Campo / Operario</option>
-                            <option value="celador_nocturno">Celador Nocturno</option>
+                            <option value="propietario">Propietario / Gerente (Jefe Mayor)</option>
+                            <option value="administrador">Administrador de Finca</option>
+                            <option value="operario_campo">Operario de Campo / Alimentador (Trabajador de Campo)</option>
+                            <option value="celador">Celador Nocturno</option>
                         </select>
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
                             <i class="fa-solid fa-chevron-down text-xs"></i>
@@ -214,28 +214,28 @@
                 </span>
                 <div class="grid grid-cols-2 gap-2 text-left">
                     <button type="button"
-                            @click="setDemo('propietario@finca.com', 'password123', 'propietario')"
+                            @click="setDemo('propietario@finca.com', 'password', 'propietario')"
                             class="p-2 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 text-slate-700 text-xs transition">
                         <span class="block font-semibold text-slate-900 text-xs">Propietario / Gerente</span>
                         <span class="text-[11px] text-slate-500 block truncate font-mono">propietario@finca.com</span>
                     </button>
 
                     <button type="button"
-                            @click="setDemo('admin@finca.com', 'password123', 'administrador')"
+                            @click="setDemo('admin@finca.com', 'password', 'administrador')"
                             class="p-2 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 text-slate-700 text-xs transition">
-                        <span class="block font-semibold text-slate-900 text-xs">Administrador</span>
+                        <span class="block font-semibold text-slate-900 text-xs">Administrador de Finca</span>
                         <span class="text-[11px] text-slate-500 block truncate font-mono">admin@finca.com</span>
                     </button>
 
                     <button type="button"
-                            @click="setDemo('trabajador@finca.com', 'password123', 'trabajador')"
+                            @click="setDemo('trabajador@finca.com', 'password', 'operario_campo')"
                             class="p-2 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 text-slate-700 text-xs transition">
                         <span class="block font-semibold text-slate-900 text-xs">Operario de Campo</span>
                         <span class="text-[11px] text-slate-500 block truncate font-mono">trabajador@finca.com</span>
                     </button>
 
                     <button type="button"
-                            @click="setDemo('celador@finca.com', 'password123', 'celador_nocturno')"
+                            @click="setDemo('celador@finca.com', 'password', 'celador')"
                             class="p-2 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 text-slate-700 text-xs transition">
                         <span class="block font-semibold text-slate-900 text-xs">Celador Nocturno</span>
                         <span class="text-[11px] text-slate-500 block truncate font-mono">celador@finca.com</span>

@@ -147,7 +147,7 @@ function isActive(itemMatch) {
         </svg>
       </div>
       <div v-show="!collapsed" class="overflow-hidden">
-        <span class="block text-xs font-bold uppercase tracking-wider text-white truncate">AquaSmart SaaS</span>
+        <span class="block text-xs font-bold uppercase tracking-wider text-white truncate">El SAS Piscícola</span>
         <span class="block text-[10px] text-aquatic-400 font-mono">Piscícola San Jerónimo</span>
       </div>
     </div>

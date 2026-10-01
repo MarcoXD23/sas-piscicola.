@@ -34,8 +34,9 @@ class RefactorizacionIntegralDiezTareasTest extends TestCase
 
         // Debe haber roles del sistema
         $this->assertDatabaseHas('roles', ['slug' => 'propietario']);
-        $this->assertDatabaseHas('roles', ['slug' => 'tecnico_acuicola']);
+        $this->assertDatabaseHas('roles', ['slug' => 'administrador']);
         $this->assertDatabaseHas('roles', ['slug' => 'operario_campo']);
+        $this->assertDatabaseHas('roles', ['slug' => 'celador_nocturno']);
 
         // Debe haber catálogo de especies
         $this->assertGreaterThan(0, Especie::count());
@@ -136,18 +137,18 @@ class RefactorizacionIntegralDiezTareasTest extends TestCase
         ]);
 
         $rolOperario = Role::where('slug', 'operario_campo')->first();
-        $rolTecnico = Role::where('slug', 'tecnico_acuicola')->first();
+        $rolCelador = Role::where('slug', 'celador_nocturno')->first();
 
         // Asignación múltiple de roles
         $response = $this->actingAs($propietario)->post("/admin/personal/{$nuevoEmpleado->id}/aprobar", [
-            'roles' => [$rolOperario->id, $rolTecnico->id],
+            'roles' => [$rolOperario->id, $rolCelador->id],
         ]);
 
         $response->assertRedirect('/admin/personal');
         $nuevoEmpleado->refresh();
         $this->assertFalse($nuevoEmpleado->isPendiente());
         $this->assertTrue($nuevoEmpleado->roles->contains('slug', 'operario_campo'));
-        $this->assertTrue($nuevoEmpleado->roles->contains('slug', 'tecnico_acuicola'));
+        $this->assertTrue($nuevoEmpleado->roles->contains('slug', 'celador_nocturno'));
         $this->assertFalse($nuevoEmpleado->roles->contains('slug', 'propietario'));
     }
 

@@ -8,6 +8,7 @@ use Database\Factories\PondFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pond extends Model
@@ -25,6 +26,7 @@ class Pond extends Model
     protected $fillable = [
         'finca_id',
         'especie_id',
+        'es_policultivo',
         'name',
         'code',
         'tipo_estanque',
@@ -46,6 +48,7 @@ class Pond extends Model
     protected function casts(): array
     {
         return [
+            'es_policultivo' => 'boolean',
             'stocked_at' => 'date',
             'fingerlings_stocked' => 'integer',
             'fish_population' => 'integer',
@@ -100,7 +103,11 @@ class Pond extends Model
             return asset('images/peces/bagre_rayado.jpg');
         }
 
-        return asset('images/peces/estanque_cultivo.jpg');
+        if ($this->especie?->foto_url) {
+            return asset($this->especie->foto_url);
+        }
+
+        return asset('images/peces/mojarra_roja.jpg');
     }
 
     /**
@@ -109,6 +116,19 @@ class Pond extends Model
      */
     public function updateBiomass(): void
     {
+        if ($this->especiesDetalle()->exists()) {
+            $detalles = $this->especiesDetalle()->get();
+            $totalPop = (int) $detalles->sum('fish_population');
+            $totalBiomass = (float) $detalles->sum('biomass');
+            $this->fish_population = $totalPop;
+            $this->biomass = round($totalBiomass, 2);
+            if ($totalPop > 0) {
+                $this->average_weight = round(($totalBiomass * 1000) / $totalPop, 2);
+            }
+            $this->save();
+            return;
+        }
+
         $population = $this->fish_population > 0 ? $this->fish_population : ($this->fingerlings_stocked ?? 0);
         $this->biomass = ($population * $this->average_weight) / 1000;
         $this->save();
@@ -128,14 +148,44 @@ class Pond extends Model
         return (float) ($currentBiomass * ($feedingRatePercentage / 100));
     }
 
-    public function especiePrincipal(): BelongsTo
+    public function especie(): BelongsTo
     {
         return $this->belongsTo(Especie::class, 'especie_id')->withDefault(function (Especie $especie, Pond $pond) {
             $especie->id = 1;
             $especie->nombre_comun = $pond->especie_nombre_fallback;
             $especie->nombre_cientifico = 'Oreochromis sp.';
-            $especie->foto_url = $pond->foto_especie;
+            $especie->foto_url = 'images/peces/mojarra_roja.jpg';
         });
+    }
+
+    public function especiePrincipal(): BelongsTo
+    {
+        return $this->especie();
+    }
+
+    public function especiesDetalle(): HasMany
+    {
+        return $this->hasMany(PondEspecie::class, 'pond_id');
+    }
+
+    public function especies(): BelongsToMany
+    {
+        return $this->belongsToMany(Especie::class, 'pond_especies', 'pond_id', 'especie_id')
+            ->withPivot(['fingerlings_stocked', 'fish_population', 'average_weight', 'biomass', 'finca_id'])
+            ->withTimestamps();
+    }
+
+    public function getEsPolicultivoAttribute(): bool
+    {
+        if (! empty($this->attributes['es_policultivo'])) {
+            return true;
+        }
+
+        if ($this->relationLoaded('especiesDetalle')) {
+            return $this->especiesDetalle->count() > 1;
+        }
+
+        return $this->especiesDetalle()->count() > 1;
     }
 
     public function getEspecieNombreFallbackAttribute(): string

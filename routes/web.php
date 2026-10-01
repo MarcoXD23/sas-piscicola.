@@ -145,7 +145,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Módulo de Alimentación y Control de Bodega de Concentrados
     Route::get('/admin/alimentacion/historial', [AlimentacionController::class, 'historial'])
-        ->middleware('role:propietario,administrador,admin,jefe_mayor,owner,jefe_finca,jefe,tecnico_acuicola')
+        ->middleware('role:propietario,administrador,admin,jefe_mayor,owner,jefe_finca,jefe')
         ->name('admin.alimentacion.historial');
 
     Route::get('/admin/bodega', [BodegaController::class, 'index'])
@@ -214,7 +214,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('admin.actividades.index');
 
     // Módulo de Gestión de Lagos, Biomasa, Tiempo de Cultivo y Muestreos Sabatinos
-    Route::middleware('role:administrador,jefe_mayor,admin,owner,jefe_finca,jefe,tecnico_acuicola,propietario')->group(function () {
+    Route::middleware('role:administrador,jefe_mayor,admin,owner,jefe_finca,jefe,propietario')->group(function () {
         Route::get('/admin/lagos', [AdminLagosController::class, 'index'])->name('admin.lagos.index');
         Route::post('/admin/lagos', [AdminLagosController::class, 'store'])->name('admin.lagos.store');
         Route::post('/admin/lotes', [LoteController::class, 'store'])->name('admin.lotes.store');

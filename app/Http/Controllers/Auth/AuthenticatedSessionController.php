@@ -54,9 +54,9 @@ class AuthenticatedSessionController extends Controller
         $targetUrl = match ($selectedRole) {
             'propietario' => url('/admin/dashboard'),
             'jefe_mayor' => url('/jefe/dashboard'),
-            'administrador', 'tecnico_acuicola' => url('/admin/dashboard'),
+            'administrador' => url('/admin/dashboard'),
             'trabajador', 'operario_campo' => url('/trabajador/dashboard'),
-            'celador_nocturno' => url('/celador/dashboard'),
+            'celador_nocturno', 'celador' => url('/celador/dashboard'),
             default => route('dashboard.index'),
         };
 

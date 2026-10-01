@@ -56,11 +56,18 @@ class PromptMaestroModulesTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'admin@finca.com',
-            'role' => User::ROLE_TECNICO_ACUICOLA,
+            'role' => User::ROLE_ADMINISTRADOR,
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'tecnico@finca.com',
         ]);
         $this->assertDatabaseHas('users', [
             'email' => 'trabajador@finca.com',
             'role' => User::ROLE_OPERARIO_CAMPO,
+        ]);
+        $this->assertDatabaseHas('users', [
+            'email' => 'celador@finca.com',
+            'role' => User::ROLE_CELADOR_NOCTURNO,
         ]);
     }
 
@@ -265,9 +272,9 @@ class PromptMaestroModulesTest extends TestCase
         $badgeJefe = $jefe->badgeRolHoy();
         $this->assertEquals('Propietario / Gerente General', $badgeJefe['label']);
 
-        $tecnico = User::factory()->create(['role' => User::ROLE_TECNICO_ACUICOLA]);
-        $badgeTecnico = $tecnico->badgeRolHoy();
-        $this->assertEquals('Técnico Acuícola', $badgeTecnico['label']);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMINISTRADOR]);
+        $badgeAdmin = $admin->badgeRolHoy();
+        $this->assertEquals('Administrador de Finca', $badgeAdmin['label']);
 
         $operario = User::factory()->create(['role' => User::ROLE_OPERARIO_CAMPO]);
         $badgeSinTurno = $operario->badgeRolHoy();

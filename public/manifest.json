@@ -1,6 +1,6 @@
 {
-  "name": "AquaSmart - El SAS Piscícola",
-  "short_name": "AquaSmart",
+  "name": "El SAS Piscícola",
+  "short_name": "El SAS Piscícola",
   "description": "Sistema Operativo de Gestión de Fincas y Granjas Piscícolas - Control de Estanques, Biometría, Cosechas, Bodega y Nómina",
   "start_url": "/",
   "scope": "/",

@@ -162,6 +162,7 @@ class RoleDashboardController extends Controller
 
         $data = [
             'rol_usuario' => 'administrador',
+            'es_tecnico' => false,
             'metricas_operativas' => [
                 'alertas_bodega_count' => $lowStockItems->count(),
                 'tareas_pendientes_count' => $tasks->count(),

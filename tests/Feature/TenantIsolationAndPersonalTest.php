@@ -33,7 +33,7 @@ class TenantIsolationAndPersonalTest extends TestCase
 
         $userA = User::withoutGlobalScopes()->create([
             'name' => 'Operario Andes',
-            'email' => 'andes@aquasmart.com',
+            'email' => 'andes@saspiscicola.com',
             'password' => Hash::make('password123'),
             'tenant_id' => $tenantA->id,
             'finca_id' => $tenantA->id,
@@ -43,7 +43,7 @@ class TenantIsolationAndPersonalTest extends TestCase
 
         $userB = User::withoutGlobalScopes()->create([
             'name' => 'Operario Mirador',
-            'email' => 'mirador@aquasmart.com',
+            'email' => 'mirador@saspiscicola.com',
             'password' => Hash::make('password123'),
             'tenant_id' => $tenantB->id,
             'finca_id' => $tenantB->id,

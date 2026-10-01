@@ -41,7 +41,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Roles del Sistema
+        // 2. Roles del Sistema (4 roles canónicos)
         $roles = [
             [
                 'slug' => 'propietario',
@@ -49,9 +49,9 @@ class DatabaseSeeder extends Seeder
                 'descripcion' => 'Máxima autoridad con control total sobre ventas, nómina, báscula y finanzas.',
             ],
             [
-                'slug' => 'tecnico_acuicola',
-                'name' => 'Técnico Acuícola',
-                'descripcion' => 'Responsable técnico y biológico de estanques, biometrías, traslados y sanidad ICA.',
+                'slug' => 'administrador',
+                'name' => 'Administrador de Finca',
+                'descripcion' => 'Gestión operativa total: lagos, biomasa, bodega, caja diaria y nómina de campo.',
             ],
             [
                 'slug' => 'operario_campo',
@@ -69,17 +69,21 @@ class DatabaseSeeder extends Seeder
             Role::updateOrCreate(['slug' => $r['slug']], $r);
         }
 
+        // Eliminar residuo de técnico acuícola si existe
+        User::where('email', 'tecnico@finca.com')->delete();
+        Role::where('slug', 'tecnico_acuicola')->delete();
+
         // 3. Catálogo Oficial de Especies Piscícolas de Colombia
         $this->call(EspecieSeeder::class);
 
-        // 4. Usuario Inicial Administrador General con Rol Propietario
-        $adminUser = User::updateOrCreate(
-            ['document_number' => '19283746'],
+        // 4. Usuario Inicial Propietario General
+        $propietarioUser = User::updateOrCreate(
+            ['email' => 'propietario@finca.com'],
             [
-                'name' => 'Don Fernando Gómez (Propietario / Gerente General)',
-                'email' => 'propietario@finca.com',
+                'name' => 'Propietario General',
+                'document_number' => '19283746',
                 'username' => 'propietario',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_PROPIETARIO,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,
@@ -88,36 +92,36 @@ class DatabaseSeeder extends Seeder
 
         $propietarioRole = Role::where('slug', 'propietario')->first();
         if ($propietarioRole) {
-            $adminUser->roles()->syncWithoutDetaching([$propietarioRole->id]);
+            $propietarioUser->roles()->syncWithoutDetaching([$propietarioRole->id]);
         }
 
-        // 5. Usuario Inicial Técnico Acuícola / Administrador de Operaciones
-        $tecnicoUser = User::updateOrCreate(
-            ['document_number' => '79865432'],
+        // 5. Usuario Inicial Administrador de Finca (Operaciones, Lagos, Bodega, Caja y Nómina)
+        $adminUser = User::updateOrCreate(
+            ['email' => 'admin@finca.com'],
             [
-                'name' => 'Ing. Juan Carlos Morales (Técnico Acuícola)',
-                'email' => 'admin@finca.com',
-                'username' => 'tecnico_acuicola',
-                'password' => Hash::make('password123'),
-                'role' => User::ROLE_TECNICO_ACUICOLA,
+                'name' => 'Administrador de Finca',
+                'document_number' => '79865432',
+                'username' => 'admin_finca',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_ADMINISTRADOR,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,
             ]
         );
 
-        $tecnicoRole = Role::where('slug', 'tecnico_acuicola')->first();
-        if ($tecnicoRole) {
-            $tecnicoUser->roles()->syncWithoutDetaching([$tecnicoRole->id]);
+        $adminRole = Role::where('slug', 'administrador')->first();
+        if ($adminRole) {
+            $adminUser->roles()->syncWithoutDetaching([$adminRole->id]);
         }
 
-        // 6. Usuario Inicial Operario de Campo
+        // 7. Usuario Inicial Operario de Campo
         $operarioUser = User::updateOrCreate(
-            ['document_number' => '1070123456'],
+            ['email' => 'trabajador@finca.com'],
             [
                 'name' => 'Carlos Pérez (Operario de Campo)',
-                'email' => 'trabajador@finca.com',
+                'document_number' => '1070123456',
                 'username' => 'operario_campo',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_OPERARIO_CAMPO,
                 'employment_type' => User::TYPE_DESTAJO_SEMANAL,
                 'finca_id' => 1,
@@ -128,14 +132,14 @@ class DatabaseSeeder extends Seeder
             $operarioUser->roles()->syncWithoutDetaching([$operarioRole->id]);
         }
 
-        // 7. Usuario Inicial Celador Nocturno
+        // 8. Usuario Inicial Celador Nocturno
         $celadorUser = User::updateOrCreate(
-            ['document_number' => '1023456789'],
+            ['email' => 'celador@finca.com'],
             [
                 'name' => 'Don Faustino (Celador Nocturno)',
-                'email' => 'celador@finca.com',
+                'document_number' => '1023456789',
                 'username' => 'celador_nocturno',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_CELADOR_NOCTURNO,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,

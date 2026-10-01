@@ -7,13 +7,32 @@
 <div class="space-y-6"
      x-data="{
          showModalNuevoLago: false,
-         cantAlevinos: 10000,
-         pesoInicial: 1.5,
          fechaSiembra: '{{ date('Y-m-d') }}',
-         get biomasaCalc() {
-             const c = parseFloat(this.cantAlevinos) || 0;
-             const p = parseFloat(this.pesoInicial) || 0;
-             return ((c * p) / 1000).toFixed(2);
+         filasEspecies: [
+             { especie_id: '{{ $especies->first()?->id ?? 1 }}', cantidad: 10000, peso: 1.5 }
+         ],
+         agregarEspecie() {
+             this.filasEspecies.push({
+                 especie_id: '{{ $especies->skip(1)->first()?->id ?? $especies->first()?->id ?? 1 }}',
+                 cantidad: 2000,
+                 peso: 1.5
+             });
+         },
+         eliminarEspecie(idx) {
+             if (this.filasEspecies.length > 1) {
+                 this.filasEspecies.splice(idx, 1);
+             }
+         },
+         get totalAlevinos() {
+             return this.filasEspecies.reduce((sum, f) => sum + (parseInt(f.cantidad) || 0), 0);
+         },
+         get biomasaTotalCalc() {
+             const total = this.filasEspecies.reduce((sum, f) => {
+                 const c = parseFloat(f.cantidad) || 0;
+                 const p = parseFloat(f.peso) || 0;
+                 return sum + ((c * p) / 1000);
+             }, 0);
+             return total.toFixed(2);
          },
          get diasCultivo() {
              if (!this.fechaSiembra) return 0;
@@ -194,6 +213,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse($lagos as $lago)
                         @php
+                            $pond = $lago;
                             $listoPesca = (float) $lago->average_weight >= 450 || $lago->status === 'En Cosecha';
                             $ultimoMuestreo = $lago->samplings->first();
                         @endphp
@@ -201,17 +221,52 @@
                             <!-- Nombre y Especie -->
                             <td class="py-3.5 px-4">
                                 <div class="flex items-center gap-3">
-                                    <img src="{{ $lago->foto_especie }}"
-                                         alt="{{ $lago->name }}"
-                                         class="h-10 w-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs">
+                                    @if($lago->es_policultivo && $lago->especiesDetalle->isNotEmpty())
+                                        <!-- Miniaturas circulares superpuestas para Policultivo -->
+                                        <div class="flex -space-x-2.5 overflow-hidden shrink-0 py-1">
+                                            @foreach($lago->especiesDetalle as $detalle)
+                                                <img src="{{ asset($detalle->especie->imagen_url ?? $detalle->especie->foto_url ?? 'images/peces/mojarra_roja.jpg') }}" 
+                                                     alt="{{ $detalle->especie->nombre_comun ?? 'Especie' }}" 
+                                                     title="{{ $detalle->especie->nombre_comun ?? 'Especie' }}: {{ number_format($detalle->fish_population, 0, ',', '.') }} peces ({{ number_format($detalle->biomass, 1, ',', '.') }} kg)" 
+                                                     class="inline-block w-9 h-9 rounded-full ring-2 ring-white object-cover shadow-sm">
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <!-- Miniatura única para Monocultivo -->
+                                        <img src="{{ asset($pond->especie->imagen_url ?? $pond->especie->foto_url ?? $pond->foto_especie ?? 'images/peces/mojarra_roja.jpg') }}" 
+                                             alt="{{ $pond->especie->nombre_comun ?? $pond->name }}" 
+                                             class="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm shrink-0">
+                                    @endif
+
                                     <div>
-                                        <div class="flex items-center gap-1.5">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
                                             <span class="font-mono font-bold text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
                                                 {{ $lago->code ?? 'L-'.$lago->id }}
                                             </span>
                                             <h4 class="font-extrabold text-slate-900 text-sm">{{ $lago->name }}</h4>
+
+                                            @if($lago->es_policultivo)
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 border border-blue-200">
+                                                    Policultivo ({{ $lago->especiesDetalle->count() ?: 2 }} especies)
+                                                </span>
+                                            @endif
                                         </div>
-                                        <p class="text-[11px] text-cyan-700 font-semibold">{{ $lago->especie_nombre }}</p>
+
+                                        @if($lago->es_policultivo && $lago->especiesDetalle->isNotEmpty())
+                                            <!-- Desglose compacto por especie en Policultivo -->
+                                            <ul class="text-[10px] text-slate-600 mt-1 space-y-0.5">
+                                                @foreach($lago->especiesDetalle as $detalle)
+                                                    <li class="flex items-center gap-1">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0"></span>
+                                                        <span class="font-bold text-slate-800">{{ $detalle->especie->nombre_comun ?? 'Especie' }}:</span>
+                                                        <span>{{ number_format($detalle->fish_population, 0, ',', '.') }}</span>
+                                                        <span class="text-slate-400">({{ number_format($detalle->biomass, 1, ',', '.') }} kg)</span>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <p class="text-[11px] text-cyan-700 font-semibold">{{ $lago->especie_nombre }}</p>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -371,8 +426,8 @@
                     </div>
                 </div>
 
-                <!-- Fila 2: Tipo de Estanque y Especie -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Fila 2: Tipo de Estanque y Fecha de Siembra -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">
                             Tipo de Estanque <span class="text-rose-500">*</span>
@@ -386,20 +441,6 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">
-                            Especie Acuícola <span class="text-rose-500">*</span>
-                        </label>
-                        <select name="especie_id" required class="w-full rounded-lg border border-slate-300 py-2 px-3 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
-                            @foreach($especies as $especie)
-                                <option value="{{ $especie->id }}">{{ $especie->nombre_comun }} ({{ $especie->nombre_cientifico }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Fila 3: Fecha de Siembra y Días de Cultivo Calculados -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">
                             Fecha de Siembra <span class="text-rose-500">*</span>
                         </label>
                         <input type="date"
@@ -411,7 +452,7 @@
 
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 mb-1">
-                            Días de Cultivo (Calculado en tiempo real)
+                            Días de Cultivo (Tiempo real)
                         </label>
                         <div class="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 px-3 text-xs font-bold text-slate-800 flex items-center justify-between">
                             <span x-text="diasCultivo + ' días'">0 días</span>
@@ -420,37 +461,107 @@
                     </div>
                 </div>
 
-                <!-- Fila 4: Cantidad de Alevinos y Peso Promedio Inicial -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">
-                            Alevinos Sembrados (Cantidad) <span class="text-rose-500">*</span>
-                        </label>
-                        <input type="number"
-                               name="fingerlings_stocked"
-                               x-model.number="cantAlevinos"
-                               min="1"
-                               required
-                               placeholder="ej. 10000"
-                               class="w-full rounded-lg border border-slate-300 py-2 px-3 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                <!-- Sección Dinámica de Siembra de Especies (Monocultivo / Policultivo) -->
+                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <h4 class="text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
+                                <i class="fa-solid fa-fish text-cyan-600"></i>
+                                <span>Siembra de Especies Acuícolas</span>
+                            </h4>
+                            <p class="text-[11px] text-slate-500">Agrega más especies para registrar un lago en <strong>Policultivo</strong>.</p>
+                        </div>
+                        <button type="button"
+                                @click="agregarEspecie()"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-cyan-800 bg-white hover:bg-cyan-50 border border-cyan-300 transition shadow-xs">
+                            <i class="fa-solid fa-plus text-[10px]"></i>
+                            <span>+ Agregar otra especie (Policultivo)</span>
+                        </button>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1">
-                            Peso Promedio Inicial (Gramos) <span class="text-rose-500">*</span>
-                        </label>
-                        <input type="number"
-                               step="0.01"
-                               min="0.01"
-                               name="average_weight"
-                               x-model.number="pesoInicial"
-                               required
-                               placeholder="ej. 1.50"
-                               class="w-full rounded-lg border border-slate-300 py-2 px-3 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                    <!-- Filas Dinámicas -->
+                    <div class="space-y-2.5">
+                        <template x-for="(fila, index) in filasEspecies" :key="index">
+                            <div class="p-3 bg-white rounded-lg border border-slate-200 shadow-xs relative">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+                                        <span class="w-4 h-4 rounded-full bg-cyan-100 text-cyan-800 font-black flex items-center justify-center text-[10px]" x-text="index + 1">1</span>
+                                        <span x-text="index === 0 ? 'Especie Principal' : 'Especie Acompañante'"></span>
+                                    </span>
+                                    <button type="button"
+                                            x-show="filasEspecies.length > 1"
+                                            @click="eliminarEspecie(index)"
+                                            class="text-rose-500 hover:text-rose-700 text-xs font-semibold inline-flex items-center gap-1">
+                                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                        <span>Quitar</span>
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                                    <!-- Selector de Especie -->
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                                            Especie <span class="text-rose-500">*</span>
+                                        </label>
+                                        <select :name="'especies[' + index + '][especie_id]'"
+                                                x-model="fila.especie_id"
+                                                required
+                                                class="w-full rounded-lg border border-slate-300 py-1.5 px-2.5 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                                            @foreach($especies as $especie)
+                                                <option value="{{ $especie->id }}">{{ $especie->nombre_comun }} ({{ $especie->nombre_cientifico }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <!-- Cantidad de Alevinos -->
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                                            Alevinos <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="number"
+                                               :name="'especies[' + index + '][cantidad]'"
+                                               x-model.number="fila.cantidad"
+                                               min="1"
+                                               required
+                                               placeholder="ej. 8000"
+                                               class="w-full rounded-lg border border-slate-300 py-1.5 px-2.5 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                                    </div>
+
+                                    <!-- Peso Promedio Inicial -->
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[11px] font-semibold text-slate-700 mb-1">
+                                            Peso Inicial (g) <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="number"
+                                               step="0.01"
+                                               min="0.01"
+                                               :name="'especies[' + index + '][peso]'"
+                                               x-model.number="fila.peso"
+                                               required
+                                               placeholder="ej. 1.50"
+                                               class="w-full rounded-lg border border-slate-300 py-1.5 px-2.5 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
+
+                    <!-- Indicador visual de Policultivo -->
+                    <div x-show="filasEspecies.length > 1" class="p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between text-xs text-blue-900">
+                        <span class="font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-blue-600"></i>
+                            <span>Lago configurado en Modo Policultivo:</span>
+                        </span>
+                        <span class="font-black" x-text="filasEspecies.length + ' especies combinadas'"></span>
+                    </div>
+
+                    <!-- Inputs de compatibilidad hacia atrás -->
+                    <input type="hidden" name="especie_id" :value="filasEspecies[0]?.especie_id">
+                    <input type="hidden" name="fingerlings_stocked" :value="totalAlevinos">
+                    <input type="hidden" name="average_weight" :value="filasEspecies[0]?.peso">
                 </div>
 
-                <!-- Fila 5: Origen de Alevinos y Lote -->
+                <!-- Fila: Origen de Alevinos y Lote -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1">
@@ -473,14 +584,26 @@
                     </div>
                 </div>
 
-                <!-- Previsualización de Biomasa Inicial Automática -->
-                <div class="p-3.5 bg-cyan-50 rounded-xl border border-cyan-200 flex items-center justify-between text-xs">
-                    <div>
-                        <span class="font-bold text-cyan-950 block">Biomasa Inicial Calculada Automáticamente:</span>
-                        <span class="text-slate-500 text-[11px]">(Peces Vivos × Peso Inicial / 1.000)</span>
+                <!-- Totalizadores en Tiempo Real -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="p-3 bg-slate-100/90 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800 block">Total Alevinos Sembrados:</span>
+                            <span class="text-slate-500 text-[10px]">Suma consolidada de todas las especies</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-base font-black text-slate-900" x-text="totalAlevinos.toLocaleString('es-CO')">0</span>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <span class="text-base font-black text-cyan-800" x-text="biomasaCalc + ' kg'">0.00 kg</span>
+
+                    <div class="p-3 bg-cyan-50 rounded-xl border border-cyan-200 flex items-center justify-between text-xs">
+                        <div>
+                            <span class="font-bold text-cyan-950 block">Biomasa Total Estimada:</span>
+                            <span class="text-cyan-600 text-[10px]">Σ (Peces × Peso / 1.000)</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-base font-black text-cyan-800" x-text="biomasaTotalCalc + ' kg'">0.00 kg</span>
+                        </div>
                     </div>
                 </div>
 

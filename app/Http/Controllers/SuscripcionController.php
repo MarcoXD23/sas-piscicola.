@@ -266,7 +266,7 @@ class SuscripcionController extends Controller
         });
 
         return response()->json([
-            'message' => 'Finca cliente dada de alta exitosamente en AquaSmart SaaS.',
+            'message' => 'Finca cliente dada de alta exitosamente en El SAS Piscícola.',
             'data' => [
                 'finca' => $resultado['finca'],
                 'plan' => $plan->nombre,

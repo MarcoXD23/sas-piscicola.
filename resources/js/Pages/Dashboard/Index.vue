@@ -23,7 +23,7 @@ const sidebarCollapsed = ref(false);
 </script>
 
 <template>
-  <Head title="Tablero de Mando Operativo - AquaSmart" />
+  <Head title="Tablero de Mando Operativo - El SAS Piscícola" />
 
   <div class="flex h-screen bg-slate-50 font-sans text-slate-800 antialiased overflow-hidden">
     <!-- Sidebar con 5 Categorías -->

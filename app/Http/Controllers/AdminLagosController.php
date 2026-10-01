@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActividadTrabajador;
 use App\Models\Especie;
 use App\Models\Estanque;
+use App\Models\PondEspecie;
 use App\Models\PondSampling;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -24,7 +25,7 @@ class AdminLagosController extends Controller
         $fincaId = $request->user()->finca_id ?? 1;
 
         $lagos = Estanque::where('finca_id', $fincaId)
-            ->with(['especiePrincipal'])
+            ->with(['especiePrincipal', 'especiesDetalle.especie'])
             ->orderBy('name', 'asc')
             ->get();
 
@@ -63,7 +64,7 @@ class AdminLagosController extends Controller
         $fincaId = request()->user()->finca_id ?? 1;
 
         $lago = Estanque::where('finca_id', $fincaId)
-            ->with(['especiePrincipal', 'samplings' => fn ($q) => $q->orderBy('sampling_date', 'desc')])
+            ->with(['especiePrincipal', 'especiesDetalle.especie', 'samplings' => fn ($q) => $q->orderBy('sampling_date', 'desc')])
             ->findOrFail($id);
 
         $data = [
@@ -172,6 +173,7 @@ class AdminLagosController extends Controller
 
     /**
      * Registra un nuevo lago/estanque y su siembra inicial de alevinos de forma transaccional.
+     * Soporta tanto monocultivo como policultivo (múltiples especies desglosadas).
      */
     public function store(Request $request): RedirectResponse|JsonResponse
     {
@@ -197,37 +199,79 @@ class AdminLagosController extends Controller
         if ($fechaSiembraInput) {
             $request->merge(['stocked_at' => $fechaSiembraInput]);
         }
-        if ($request->has('cantidad_alevinos') && ! $request->has('fingerlings_stocked')) {
-            $request->merge(['fingerlings_stocked' => $request->input('cantidad_alevinos')]);
-        }
-        if ($request->has('cantidad_sembrada') && ! $request->has('fingerlings_stocked')) {
-            $request->merge(['fingerlings_stocked' => $request->input('cantidad_sembrada')]);
-        }
-        if ($request->has('peso_promedio_inicial') && ! $request->has('average_weight')) {
-            $request->merge(['average_weight' => $request->input('peso_promedio_inicial')]);
-        }
-        if ($request->has('peso_promedio') && ! $request->has('average_weight')) {
-            $request->merge(['average_weight' => $request->input('peso_promedio')]);
-        }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:191'],
-            'code' => ['nullable', 'string', 'max:50'],
-            'tipo_estanque' => ['required', 'string', 'regex:/^(tierra|geomembrana|concreto)$/i'],
-            'especie_id' => ['required', 'exists:especies,id'],
-            'stocked_at' => ['required', 'date'],
-            'fingerlings_stocked' => ['required', 'integer', 'min:1'],
-            'average_weight' => ['required', 'numeric', 'min:0.01'],
-            'numero_lote' => ['nullable', 'string', 'max:80'],
-            'alevinera_origen' => ['nullable', 'string', 'max:150'],
-        ]);
+        $tieneArrayEspecies = $request->has('especies') && is_array($request->input('especies')) && count($request->input('especies')) > 0;
+
+        if ($tieneArrayEspecies) {
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:191'],
+                'code' => ['nullable', 'string', 'max:50'],
+                'tipo_estanque' => ['required', 'string', 'regex:/^(tierra|geomembrana|concreto)$/i'],
+                'stocked_at' => ['required', 'date'],
+                'numero_lote' => ['nullable', 'string', 'max:80'],
+                'alevinera_origen' => ['nullable', 'string', 'max:150'],
+                'especies' => ['required', 'array', 'min:1'],
+                'especies.*.especie_id' => ['required', 'exists:especies,id'],
+                'especies.*.cantidad' => ['required', 'integer', 'min:1'],
+                'especies.*.peso' => ['required', 'numeric', 'min:0.01'],
+            ]);
+
+            $filasEspecies = $validated['especies'];
+            $totalPeces = 0;
+            $totalBiomasa = 0.0;
+            foreach ($filasEspecies as $fila) {
+                $cant = (int) $fila['cantidad'];
+                $peso = (float) $fila['peso'];
+                $totalPeces += $cant;
+                $totalBiomasa += ($cant * $peso) / 1000;
+            }
+            $totalBiomasa = round($totalBiomasa, 2);
+            $pesoPromedioPonderado = $totalPeces > 0 ? round(($totalBiomasa * 1000) / $totalPeces, 2) : 1.0;
+            $especiePrincipalId = (int) $filasEspecies[0]['especie_id'];
+            $esPolicultivo = count($filasEspecies) > 1;
+        } else {
+            if ($request->has('cantidad_alevinos') && ! $request->has('fingerlings_stocked')) {
+                $request->merge(['fingerlings_stocked' => $request->input('cantidad_alevinos')]);
+            }
+            if ($request->has('cantidad_sembrada') && ! $request->has('fingerlings_stocked')) {
+                $request->merge(['fingerlings_stocked' => $request->input('cantidad_sembrada')]);
+            }
+            if ($request->has('peso_promedio_inicial') && ! $request->has('average_weight')) {
+                $request->merge(['average_weight' => $request->input('peso_promedio_inicial')]);
+            }
+            if ($request->has('peso_promedio') && ! $request->has('average_weight')) {
+                $request->merge(['average_weight' => $request->input('peso_promedio')]);
+            }
+
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:191'],
+                'code' => ['nullable', 'string', 'max:50'],
+                'tipo_estanque' => ['required', 'string', 'regex:/^(tierra|geomembrana|concreto)$/i'],
+                'especie_id' => ['required', 'exists:especies,id'],
+                'stocked_at' => ['required', 'date'],
+                'fingerlings_stocked' => ['required', 'integer', 'min:1'],
+                'average_weight' => ['required', 'numeric', 'min:0.01'],
+                'numero_lote' => ['nullable', 'string', 'max:80'],
+                'alevinera_origen' => ['nullable', 'string', 'max:150'],
+            ]);
+
+            $totalPeces = (int) $validated['fingerlings_stocked'];
+            $pesoPromedioPonderado = (float) $validated['average_weight'];
+            $totalBiomasa = round(($totalPeces * $pesoPromedioPonderado) / 1000, 2);
+            $especiePrincipalId = (int) $validated['especie_id'];
+            $esPolicultivo = false;
+            $filasEspecies = [
+                [
+                    'especie_id' => $especiePrincipalId,
+                    'cantidad' => $totalPeces,
+                    'peso' => $pesoPromedioPonderado,
+                ],
+            ];
+        }
 
         $user = $request->user();
         $fincaId = $user?->finca_id ?? 1;
 
-        $pecesVivos = (int) $validated['fingerlings_stocked'];
-        $pesoPromedio = (float) $validated['average_weight'];
-        $biomasaInicial = round(($pecesVivos * $pesoPromedio) / 1000, 2);
         $fechaSiembra = Carbon::parse($validated['stocked_at']);
         $diasCultivo = max(0, (int) $fechaSiembra->diffInDays(now()));
 
@@ -241,28 +285,52 @@ class AdminLagosController extends Controller
 
         $tipoEstanque = $validated['tipo_estanque'];
 
-        $estanque = DB::transaction(function () use ($fincaId, $validated, $code, $tipoEstanque, $pecesVivos, $pesoPromedio, $biomasaInicial, $numeroLote, $user) {
+        $estanque = DB::transaction(function () use (
+            $fincaId, $validated, $code, $tipoEstanque, $totalPeces, $pesoPromedioPonderado,
+            $totalBiomasa, $numeroLote, $user, $especiePrincipalId, $esPolicultivo, $filasEspecies
+        ) {
             $nuevoEstanque = Estanque::create([
                 'finca_id' => $fincaId,
                 'name' => $validated['name'],
                 'code' => $code,
                 'tipo_estanque' => $tipoEstanque,
-                'especie_id' => $validated['especie_id'],
+                'especie_id' => $especiePrincipalId,
+                'es_policultivo' => $esPolicultivo,
                 'stocked_at' => $validated['stocked_at'],
-                'fingerlings_stocked' => $pecesVivos,
-                'fish_population' => $pecesVivos,
-                'average_weight' => $pesoPromedio,
-                'biomass' => $biomasaInicial,
+                'fingerlings_stocked' => $totalPeces,
+                'fish_population' => $totalPeces,
+                'average_weight' => $pesoPromedioPonderado,
+                'biomass' => $totalBiomasa,
                 'status' => 'Sembrado',
                 'numero_lote' => $numeroLote,
                 'alevinera_origen' => $validated['alevinera_origen'] ?? 'Origen Local',
             ]);
 
+            foreach ($filasEspecies as $fila) {
+                $cantFila = (int) $fila['cantidad'];
+                $pesoFila = (float) $fila['peso'];
+                $biomasaFila = round(($cantFila * $pesoFila) / 1000, 2);
+
+                PondEspecie::create([
+                    'finca_id' => $fincaId,
+                    'pond_id' => $nuevoEstanque->id,
+                    'especie_id' => (int) $fila['especie_id'],
+                    'fingerlings_stocked' => $cantFila,
+                    'fish_population' => $cantFila,
+                    'average_weight' => $pesoFila,
+                    'biomass' => $biomasaFila,
+                ]);
+            }
+
             if ($user && class_exists(ActividadTrabajador::class)) {
+                $desc = $esPolicultivo
+                    ? "Siembra de policultivo registrada en lago {$nuevoEstanque->name} ({$code}): {$totalPeces} alevinos en total (" . count($filasEspecies) . " especies), biomasa inicial de {$totalBiomasa} kg."
+                    : "Siembra inicial registrada en lago {$nuevoEstanque->name} ({$code}): {$totalPeces} alevinos sembrados, biomasa inicial de {$totalBiomasa} kg.";
+
                 ActividadTrabajador::registrar(
                     $user,
                     'siembra_lago',
-                    "Siembra inicial registrada en lago {$nuevoEstanque->name} ({$code}): {$pecesVivos} alevinos sembrados, biomasa inicial de {$biomasaInicial} kg.",
+                    $desc,
                     $nuevoEstanque->id
                 );
             }
@@ -274,15 +342,16 @@ class AdminLagosController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => "Lago {$estanque->name} registrado exitosamente con biomasa inicial de {$biomasaInicial} kg y {$diasCultivo} días de cultivo.",
-                'data' => $estanque->load('especiePrincipal'),
-                'peces_vivos' => $pecesVivos,
-                'biomasa_kg' => $biomasaInicial,
+                'message' => "Lago {$estanque->name} registrado exitosamente con biomasa inicial de {$totalBiomasa} kg y {$diasCultivo} días de cultivo.",
+                'data' => $estanque->load(['especiePrincipal', 'especiesDetalle.especie']),
+                'peces_vivos' => $totalPeces,
+                'biomasa_kg' => $totalBiomasa,
                 'dias_cultivo' => $diasCultivo,
+                'es_policultivo' => $esPolicultivo,
             ], 201);
         }
 
         return redirect()->route('admin.lagos.index')
-            ->with('status', "Lago {$estanque->name} ({$code}) registrado con éxito. Biomasa inicial: {$biomasaInicial} kg ({$diasCultivo} días de cultivo).");
+            ->with('status', "Lago {$estanque->name} ({$code}) registrado con éxito. Biomasa inicial: {$totalBiomasa} kg ({$diasCultivo} días de cultivo).");
     }
 }

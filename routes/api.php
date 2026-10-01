@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AlimentacionController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\CeladorController;
 use App\Http\Controllers\CommunicationController;
@@ -56,6 +57,9 @@ Route::get('/calendar-events/server-time', [CalendarEventController::class, 'ser
 
 // Autenticación API RESTful (Sanctum)
 Route::post('/login', [AuthController::class, 'login'])->name('api.login');
+
+// CRUD API REST de Productos (Guía Docente - Testeable con Thunder Client)
+Route::apiResource('products', ProductController::class);
 
 // Rutas protegidas por autenticación Sanctum o Sesión Web
 Route::middleware(['auth:sanctum,web'])->group(function () {
@@ -418,7 +422,7 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | AquaSmart SaaS Extended Architecture Routes (API v1)
+    | El SAS Piscícola SaaS Extended Architecture Routes (API v1)
     |--------------------------------------------------------------------------
     */
     Route::prefix('v1')->group(function () {

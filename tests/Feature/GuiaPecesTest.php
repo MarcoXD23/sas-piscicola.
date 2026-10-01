@@ -36,12 +36,12 @@ class GuiaPecesTest extends TestCase
         $response->assertStatus(200)
             ->assertSee('Enciclopedia')
             ->assertSee('Guía Técnica de Cultivo de Peces')
-            ->assertSee('Mojarra Negra / Tilapia Nilótica')
+            ->assertSee('Mojarra Negra / Plateada')
             ->assertSee('Mojarra Roja')
             ->assertSee('Cachama Blanca')
             ->assertSee('Bocachico')
             ->assertSee('Trucha Arcoíris')
-            ->assertSee('Bagre Rayado / Yaque')
+            ->assertSee('Bagre Rayado')
             ->assertSee('Volver al Dashboard');
     }
 

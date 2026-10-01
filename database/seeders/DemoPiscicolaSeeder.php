@@ -47,20 +47,24 @@ class DemoPiscicolaSeeder extends Seeder
         // 2. Catálogo oficial de especies
         $this->call(EspecieSeeder::class);
 
-        // 3. Usuarios de demostración para los roles del sistema
+        // 3. Usuarios de demostración para los roles del sistema (4 roles canónicos)
         $propietarioRole = Role::firstOrCreate(['slug' => 'propietario'], ['name' => 'Propietario / Gerente General']);
-        $tecnicoRole = Role::firstOrCreate(['slug' => 'tecnico_acuicola'], ['name' => 'Técnico Acuícola']);
+        $administradorRole = Role::firstOrCreate(['slug' => 'administrador'], ['name' => 'Administrador de Finca']);
         $operarioRole = Role::firstOrCreate(['slug' => 'operario_campo'], ['name' => 'Operario de Campo / Alimentador']);
         $celadorRole = Role::firstOrCreate(['slug' => 'celador_nocturno'], ['name' => 'Celador Nocturno']);
 
+        // Eliminar residuo de técnico acuícola si existe
+        User::where('email', 'tecnico@finca.com')->delete();
+        Role::where('slug', 'tecnico_acuicola')->delete();
+
         // Propietario / Gerente General (Acceso Total y Exclusivo a Ventas, Nómina, Báscula)
         $jefe = User::updateOrCreate(
-            ['document_number' => '19283746'],
+            ['email' => 'propietario@finca.com'],
             [
+                'document_number' => '19283746',
                 'name' => 'Don Fernando Gómez (Propietario / Gerente General)',
-                'email' => 'propietario@finca.com',
                 'username' => 'propietario',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_PROPIETARIO,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,
@@ -68,29 +72,29 @@ class DemoPiscicolaSeeder extends Seeder
         );
         $jefe->roles()->syncWithoutDetaching([$propietarioRole->id]);
 
-        // Técnico Acuícola / Administrador de Campo (Acceso biológico y técnico)
-        $tecnico = User::updateOrCreate(
-            ['document_number' => '79865432'],
+        // Administrador de Finca (Operaciones, Bodega, Compras, Caja Diaria, Nómina y Lagos)
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@finca.com'],
             [
-                'name' => 'Ing. Juan Carlos Morales (Técnico Acuícola)',
-                'email' => 'admin@finca.com',
-                'username' => 'tecnico_acuicola',
-                'password' => Hash::make('password123'),
-                'role' => User::ROLE_TECNICO_ACUICOLA,
+                'document_number' => '79865432',
+                'name' => 'Administrador de Finca',
+                'username' => 'admin_finca',
+                'password' => Hash::make('password'),
+                'role' => User::ROLE_ADMINISTRADOR,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,
             ]
         );
-        $tecnico->roles()->syncWithoutDetaching([$tecnicoRole->id]);
+        $admin->roles()->syncWithoutDetaching([$administradorRole->id]);
 
         // Operario de Finca (Rol rotativo según la Agenda)
         $operario = User::updateOrCreate(
-            ['document_number' => '1070123456'],
+            ['email' => 'trabajador@finca.com'],
             [
+                'document_number' => '1070123456',
                 'name' => 'Carlos Pérez (Operario de Campo)',
-                'email' => 'trabajador@finca.com',
                 'username' => 'operario_campo',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_OPERARIO_CAMPO,
                 'employment_type' => User::TYPE_DESTAJO_SEMANAL,
                 'finca_id' => 1,
@@ -100,12 +104,12 @@ class DemoPiscicolaSeeder extends Seeder
 
         // Celador Nocturno
         $celador = User::updateOrCreate(
-            ['document_number' => '1023456789'],
+            ['email' => 'celador@finca.com'],
             [
+                'document_number' => '1023456789',
                 'name' => 'Don Faustino (Celador Nocturno)',
-                'email' => 'celador@finca.com',
                 'username' => 'celador_nocturno',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('password'),
                 'role' => User::ROLE_CELADOR_NOCTURNO,
                 'employment_type' => User::TYPE_FIJO,
                 'finca_id' => 1,
@@ -286,7 +290,7 @@ class DemoPiscicolaSeeder extends Seeder
                 'finca_id' => 1,
                 'description' => 'Alimentar con ración completa al 2.5% de biomasa y registrar apetito de cada estanque.',
                 'assigned_to_user_id' => $operario->id,
-                'created_by_user_id' => $tecnico->id,
+                'created_by_user_id' => $admin->id,
                 'priority' => AdminTask::PRIORITY_URGENTE,
                 'status' => AdminTask::STATUS_PENDIENTE,
                 'due_date' => now()->toDateString(),

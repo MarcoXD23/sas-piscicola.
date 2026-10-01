@@ -153,17 +153,19 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true);
+        return $this->isAdministrador();
     }
 
     public function isAdministrador(): bool
     {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true);
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true)
+            || in_array($this->rol, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true);
     }
 
     public function isTecnicoAcuicola(): bool
     {
-        return in_array($this->role, [self::ROLE_TECNICO_ACUICOLA, self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR], true);
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true)
+            || in_array($this->rol, [self::ROLE_ADMIN, self::ROLE_ADMINISTRADOR, self::ROLE_TECNICO_ACUICOLA], true);
     }
 
     public function isWorker(): bool
@@ -233,11 +235,11 @@ class User extends Authenticatable
             ];
         }
 
-        if ($this->isTecnicoAcuicola()) {
+        if ($this->isAdministrador()) {
             return [
-                'label' => 'Técnico Acuícola',
-                'sublabel' => 'Biología & Muestreos',
-                'color' => 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+                'label' => 'Administrador de Finca',
+                'sublabel' => 'Operaciones & Gestión',
+                'color' => 'bg-blue-500/20 text-blue-300 border-blue-500/30',
             ];
         }
 
