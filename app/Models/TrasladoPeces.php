@@ -71,25 +71,39 @@ class TrasladoPeces extends Model
             // 1. Restar del estanque origen
             $origen->fish_population = max(0, (int) $origen->fish_population - $this->cantidad_peces_trasladados);
             if ($origen->fish_population === 0) {
-                $origen->status = 'cosechado';
-                $origen->biomass = 0;
+                $origen->status = 'Vacio';
+                $origen->biomass = 0.0;
             } else {
                 $origen->biomass = max(0.0, round(($origen->fish_population * (float) $origen->average_weight) / 1000, 2));
             }
             $origen->save();
 
-            // 2. Sumar al estanque destino descontando merma por manejo
+            // 2. Sumar al estanque destino con ponderación de peso promedio y recalcular biomasa
+            $pecesActualesDestino = (int) $destino->fish_population;
+            $pesoActualDestino = (float) $destino->average_weight;
             $pecesEfectivos = max(0, (int) $this->cantidad_peces_trasladados - (int) $this->merma_traslado_peces);
-            $destino->fish_population = (int) $destino->fish_population + $pecesEfectivos;
-            $destino->average_weight = (float) $this->peso_promedio_gramos;
+            $totalPecesDestino = $pecesActualesDestino + $pecesEfectivos;
 
-            // Si el estanque estaba vacío o inactivo, actualizar estado a Sembrado
+            if ($pecesActualesDestino > 0) {
+                $pesoPonderado = round((($pecesActualesDestino * $pesoActualDestino) + ($pecesEfectivos * (float) $this->peso_promedio_gramos)) / max(1, $totalPecesDestino), 2);
+                $destino->fish_population = $totalPecesDestino;
+                $destino->average_weight = $pesoPonderado;
+            } else {
+                $destino->fish_population = $pecesEfectivos;
+                $destino->average_weight = (float) $this->peso_promedio_gramos;
+                $destino->status = 'Sembrado';
+                if (! $destino->stocked_at) {
+                    $destino->stocked_at = $this->fecha;
+                }
+            }
+
             if (in_array(strtolower($destino->status ?? ''), ['vacio', 'inactivo', 'cosechado', 'limpieza', ''])) {
                 $destino->status = 'Sembrado';
                 if (! $destino->stocked_at) {
                     $destino->stocked_at = $this->fecha;
                 }
             }
+
             $destino->biomass = max(0.0, round(($destino->fish_population * (float) $destino->average_weight) / 1000, 2));
             $destino->save();
         });

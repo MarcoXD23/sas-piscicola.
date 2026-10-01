@@ -52,27 +52,39 @@ class TrasladoPecesController extends Controller
         $validated = $request->validate([
             'estanque_origen_id' => ['required', 'exists:ponds,id', 'different:estanque_destino_id'],
             'estanque_destino_id' => ['required', 'exists:ponds,id'],
-            'fecha' => ['required', 'date'],
+            'fecha' => ['nullable', 'date'],
             'cantidad_peces_trasladados' => ['required', 'integer', 'min:1'],
             'peso_promedio_gramos' => ['required', 'numeric', 'min:0.1'],
             'merma_traslado_peces' => ['nullable', 'integer', 'min:0'],
-            'motivo' => ['required', 'in:desdoble_densidad,cambio_etapa,limpieza_estanque'],
+            'motivo' => ['required', 'string', 'max:100'],
             'observaciones' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $user = $request->user();
-        $fincaId = $user->finca_id ?? 1;
+        $fincaId = $user?->finca_id ?? 1;
 
-        $origen = Pond::findOrFail($validated['estanque_origen_id']);
-        if ($origen->fish_population < (int) $validated['cantidad_peces_trasladados']) {
-            $msg = "El estanque de origen '{$origen->name}' solo dispone de "
-                .number_format($origen->fish_population).' peces para trasladar.';
+        $origen = Pond::where('finca_id', $fincaId)->where('id', $validated['estanque_origen_id'])->first();
+        $destino = Pond::where('finca_id', $fincaId)->where('id', $validated['estanque_destino_id'])->first();
 
+        if (! $origen || ! $destino) {
+            $msgTenant = 'Los estanques seleccionados deben pertenecer a la misma finca.';
             if ($request->wantsJson()) {
-                return response()->json(['message' => $msg, 'error' => 'poblacion_insuficiente'], 422);
+                return response()->json(['message' => $msgTenant, 'error' => 'tenant_mismatch'], 422);
             }
 
-            return back()->withErrors(['cantidad_peces_trasladados' => $msg])->withInput();
+            return back()->withErrors(['estanque_origen_id' => $msgTenant])->withInput();
+        }
+
+        $mensajeExceso = 'La cantidad a trasladar no puede superar los peces vivos actuales del estanque de origen.';
+        if ((int) $origen->fish_population < (int) $validated['cantidad_peces_trasladados']) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => $mensajeExceso,
+                    'errors' => ['cantidad_peces_trasladados' => [$mensajeExceso]],
+                ], 422);
+            }
+
+            return back()->withErrors(['cantidad_peces_trasladados' => $mensajeExceso])->withInput();
         }
 
         $traslado = TrasladoPeces::create([

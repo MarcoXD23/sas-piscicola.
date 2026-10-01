@@ -4,7 +4,19 @@
 @section('page_title', 'Módulo de Traslados y Desdobles de Peces')
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6" x-data="{ modalOpen: false }">
+<div class="max-w-7xl mx-auto space-y-6" x-data="{ 
+    modalOpen: false,
+    origenSeleccionado: '',
+    estanquesMap: {{ Js::from($estanques->keyBy('id')) }},
+    pesoSugerido: '',
+    actualizarSugerido() {
+        if (this.origenSeleccionado && this.estanquesMap[this.origenSeleccionado]) {
+            this.pesoSugerido = this.estanquesMap[this.origenSeleccionado].average_weight || '';
+        } else {
+            this.pesoSugerido = '';
+        }
+    }
+}">
 
     <!-- Navegación y Encabezado con Botón Atrás -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -18,7 +30,7 @@
                     <span>Desdobles & Traslados de Estanques</span>
                 </h1>
                 <p class="text-sm text-slate-500 mt-1">
-                    Control de densidad poblacional, cambio de etapas (Alevinaje → Levante → Engorde) y recálculo automático de biomasa.
+                    Control de densidad poblacional, clasificación por tallas y recálculo automático de biomasa ponderada.
                 </p>
             </div>
         </div>
@@ -127,9 +139,10 @@
                             <td class="py-4 px-6">
                                 @php
                                     $motivoLabel = match($item->motivo) {
-                                        'desdoble_densidad' => 'Desdoble de Densidad',
-                                        'cambio_etapa' => 'Cambio de Etapa',
-                                        'limpieza_estanque' => 'Limpieza / Mantenimiento',
+                                        'desdoble_densidad', 'Desdoble por densidad/crecimiento' => 'Desdoble por densidad/crecimiento',
+                                        'cambio_etapa', 'Clasificación por tallas' => 'Clasificación por tallas',
+                                        'limpieza_estanque', 'Mantenimiento/secado de estanque' => 'Mantenimiento/secado de estanque',
+                                        'Sanitario' => 'Sanitario',
                                         default => $item->motivo,
                                     };
                                 @endphp
@@ -190,11 +203,13 @@
                             Estanque Origen *
                         </label>
                         <select name="estanque_origen_id" id="estanque_origen_id" required
+                                x-model="origenSeleccionado"
+                                @change="actualizarSugerido()"
                                 class="w-full rounded-2xl border-slate-300 text-xs font-semibold text-slate-800 py-2.5">
                             <option value="">Seleccionar Origen</option>
-                            @foreach ($estanques as $pond)
+                            @foreach ($estanquesOrigen ?? $estanques->where('fish_population', '>', 0) as $pond)
                                 <option value="{{ $pond->id }}">
-                                    {{ $pond->name }} ({{ number_format($pond->fish_population) }} peces)
+                                    {{ $pond->name }} ({{ number_format($pond->fish_population) }} peces - {{ number_format($pond->average_weight ?? 0, 1) }}g)
                                 </option>
                             @endforeach
                         </select>
@@ -208,8 +223,8 @@
                                 class="w-full rounded-2xl border-slate-300 text-xs font-semibold text-slate-800 py-2.5">
                             <option value="">Seleccionar Destino</option>
                             @foreach ($estanques as $pond)
-                                <option value="{{ $pond->id }}">
-                                    {{ $pond->name }} (Estado: {{ $pond->status ?? 'Disponible' }})
+                                <option value="{{ $pond->id }}" :disabled="origenSeleccionado == {{ $pond->id }}">
+                                    {{ $pond->name }} (Población: {{ number_format($pond->fish_population) }} | Estado: {{ $pond->status ?? 'Disponible' }})
                                 </option>
                             @endforeach
                         </select>
@@ -222,18 +237,19 @@
                             Fecha de Traslado *
                         </label>
                         <input type="date" name="fecha" id="fecha" required value="{{ date('Y-m-d') }}"
-                               class="w-full rounded-2xl border-slate-300 text-xs font-semibold text-slate-800 py-2.5">
+                                class="w-full rounded-2xl border-slate-300 text-xs font-semibold text-slate-800 py-2.5">
                     </div>
 
                     <div>
                         <label for="motivo" class="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                            Motivo *
+                            Motivo del Traslado *
                         </label>
                         <select name="motivo" id="motivo" required
                                 class="w-full rounded-2xl border-slate-300 text-xs font-semibold text-slate-800 py-2.5">
-                            <option value="desdoble_densidad">Desdoble por Densidad</option>
-                            <option value="cambio_etapa">Cambio de Etapa (Crecimiento)</option>
-                            <option value="limpieza_estanque">Limpieza / Mantenimiento</option>
+                            <option value="Desdoble por densidad/crecimiento">Desdoble por densidad/crecimiento</option>
+                            <option value="Clasificación por tallas">Clasificación por tallas</option>
+                            <option value="Mantenimiento/secado de estanque">Mantenimiento/secado de estanque</option>
+                            <option value="Sanitario">Sanitario</option>
                         </select>
                     </div>
                 </div>
@@ -244,7 +260,7 @@
                             Cant. Peces *
                         </label>
                         <input type="number" name="cantidad_peces_trasladados" id="cantidad_peces_trasladados" required min="1" step="1"
-                               class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5" placeholder="Ej: 2500">
+                                class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5" placeholder="Ej: 2500">
                     </div>
 
                     <div>
@@ -252,7 +268,8 @@
                             Peso Prom. (g) *
                         </label>
                         <input type="number" name="peso_promedio_gramos" id="peso_promedio_gramos" required min="0.1" step="0.1"
-                               class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5" placeholder="Ej: 180.5">
+                               x-model="pesoSugerido"
+                                class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5" placeholder="Ej: 180.5">
                     </div>
 
                     <div>
@@ -260,7 +277,7 @@
                             Merma (Peces)
                         </label>
                         <input type="number" name="merma_traslado_peces" id="merma_traslado_peces" min="0" step="1" value="0"
-                               class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5">
+                                class="w-full rounded-2xl border-slate-300 text-xs font-bold text-slate-800 py-2.5">
                     </div>
                 </div>
 
