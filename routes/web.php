@@ -4,6 +4,7 @@ use App\Http\Controllers\ActividadTrabajadorController;
 use App\Http\Controllers\AdminLagosController;
 use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\AgendaOperativaController;
+use App\Http\Controllers\AlimentacionController;
 use App\Http\Controllers\BodegaController;
 use App\Http\Controllers\CalendarEventController;
 use App\Http\Controllers\CeladorController;
@@ -143,12 +144,25 @@ Route::middleware(['auth'])->group(function () {
         ->name('admin.ajustes.update');
 
     // Módulo de Alimentación y Control de Bodega de Concentrados
+    Route::get('/admin/alimentacion/historial', [AlimentacionController::class, 'historial'])
+        ->middleware('role:propietario,administrador,admin,jefe_mayor,owner,jefe_finca,jefe,tecnico_acuicola')
+        ->name('admin.alimentacion.historial');
+
     Route::get('/admin/bodega', [BodegaController::class, 'index'])
         ->middleware('role:administrador,admin,jefe_mayor,owner,jefe_finca,jefe')
         ->name('admin.bodega.index');
     Route::get('/bodega', [BodegaController::class, 'index'])
         ->middleware('role:administrador,admin,jefe_mayor,owner,jefe_finca,jefe')
         ->name('bodega.index');
+    Route::post('/admin/bodega/despacho', [BodegaController::class, 'storeDespacho'])
+        ->middleware('role:propietario,jefe_mayor,owner,jefe_finca,jefe')
+        ->name('admin.bodega.despacho');
+    Route::post('/admin/bodega/despachos/{id}/confirmar', [BodegaController::class, 'confirmarRecepcion'])
+        ->middleware('role:administrador,admin,propietario,jefe_mayor,owner,jefe_finca,jefe')
+        ->name('admin.bodega.despachos.confirmar');
+    Route::post('/admin/bodega/{id}/confirmar', [BodegaController::class, 'confirmarRecepcion'])
+        ->middleware('role:administrador,admin,propietario,jefe_mayor,owner,jefe_finca,jefe')
+        ->name('admin.bodega.confirmar');
     Route::post('/admin/bodega/entrada', [BodegaController::class, 'storeEntrada'])
         ->middleware('role:administrador,admin,jefe_mayor,owner,jefe_finca,jefe')
         ->name('admin.bodega.entrada');

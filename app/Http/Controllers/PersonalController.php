@@ -84,6 +84,15 @@ class PersonalController extends Controller
             abort(403, 'Acceso denegado: solo el rol propietario tiene autorización para gestionar personal y usuarios.');
         }
 
+        // Seguridad estricta: El rol de propietario o administrador nunca puede asignarse desde personal
+        $rawRoles = (array) ($request->roles ?? $request->role ?? []);
+        foreach ($rawRoles as $r) {
+            $rSlug = is_numeric($r) ? (Role::find($r)?->slug ?? '') : (string) $r;
+            if (in_array(strtolower($rSlug), ['propietario', 'owner', 'administrador_general', 'jefe_mayor'], true)) {
+                abort(422, 'El rol de propietario no puede ser asignado a personal de campo.');
+            }
+        }
+
         if ($request->filled('role') && ! $request->has('roles')) {
             $request->merge(['roles' => (array) $request->role]);
         }

@@ -9,6 +9,7 @@ use App\Models\FeedInventory;
 use App\Models\InventarioAlimento;
 use App\Models\Pond;
 use App\Services\FeedingCalculationService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,40 @@ class AlimentacionController extends Controller
     public function __construct(
         protected FeedingCalculationService $feedingService
     ) {}
+
+    /**
+     * Vista de Auditoría y Control de Alimentación (Propietario / Administrador).
+     * Muestra: Fecha, Hora, Estanque/Lago, Kilos suministrados, Tipo de concentrado y Nombre del trabajador responsable.
+     */
+    public function historial(Request $request): View
+    {
+        $fincaId = $request->user()?->finca_id ?? 1;
+
+        $query = FeedingLog::where('finca_id', $fincaId)
+            ->with(['pond', 'user']);
+
+        if ($request->filled('pond_id')) {
+            $query->where('pond_id', $request->pond_id);
+        }
+
+        if ($request->filled('fecha')) {
+            $query->whereDate('feeding_date', $request->fecha);
+        }
+
+        $logs = $query->orderBy('feeding_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(25)
+            ->withQueryString();
+
+        $ponds = Pond::where('finca_id', $fincaId)->orderBy('name')->get();
+        $totalKilos = round((float) FeedingLog::where('finca_id', $fincaId)->sum('amount_kg'), 2);
+
+        return view('admin.alimentacion.historial', [
+            'logs' => $logs,
+            'ponds' => $ponds,
+            'totalKilos' => $totalKilos,
+        ]);
+    }
 
     /**
      * Listado de registros de alimentación.
