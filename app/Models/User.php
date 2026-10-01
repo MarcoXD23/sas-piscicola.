@@ -245,8 +245,8 @@ class User extends Authenticatable
         if ($turno) {
             if ($turno->rol_asignado === AgendaTurno::ROL_SEGURIDAD_NOCHE) {
                 return [
-                    'label' => 'Rol Activo Hoy: Celador (Seguridad & Noche)',
-                    'sublabel' => 'Turno Activo',
+                    'label' => 'Rol Hoy: Celador',
+                    'sublabel' => 'Seguridad & Noche',
                     'color' => 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
                 ];
             }

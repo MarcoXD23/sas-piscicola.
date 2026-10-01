@@ -454,6 +454,14 @@
                         </div>
                     </div>
 
+                    <!-- Badge Dinámico del Rol / Turno de Hoy en Header -->
+                    @if(!empty($badgeHoy['label']))
+                    <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-sm {{ $badgeHoy['color'] }}">
+                        <i class="fa-solid fa-id-badge text-[11px]"></i>
+                        <span>{{ $badgeHoy['label'] }}</span>
+                    </div>
+                    @endif
+
                     <!-- Separador Vertical -->
                     <div class="h-6 w-px bg-slate-200"></div>
 

@@ -81,6 +81,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('dashboard.trabajador');
 
     // Agenda de Finca, Sincronización y Asignación de Turnos Operativos
+    Route::get('/admin/agenda', [CalendarEventController::class, 'agendaView'])->name('admin.agenda.index');
     Route::post('/agenda/guardar', [AgendaController::class, 'store'])->name('agenda.store');
     Route::post('/agenda/sync', [AgendaController::class, 'sync'])->name('agenda.sync');
     Route::post('/agenda/turnos/semanal', [AgendaOperativaController::class, 'storeSemanal'])->name('agenda.turnos.semanal');

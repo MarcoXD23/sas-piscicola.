@@ -28,6 +28,8 @@ class VerificarTurnoDiarioAlimentador
 
         $hoy = now()->toDateString();
 
+        $mensaje = 'Acceso restringido: Hoy no tienes turno asignado para alimentar. Consulta la Agenda Operativa.';
+
         // 2. Si hoy es domingo y el trabajador tiene turno de guardia nocturna:
         $turnoGuardiaHoy = AgendaTurno::where('user_id', $user->id)
             ->whereDate('fecha', $hoy)
@@ -36,12 +38,11 @@ class VerificarTurnoDiarioAlimentador
             ->first();
 
         if ($turnoGuardiaHoy && now()->isSunday()) {
-            $mensaje = 'Hoy domingo tu turno activo es Celador (Seguridad & Noche). Tu labor de alimentación inicia mañana lunes.';
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['message' => $mensaje, 'error' => 'TURNO_NOCTURNO_ACTIVO'], 403);
             }
 
-            return redirect()->route('celador.dashboard')->with('info', $mensaje);
+            return redirect()->route('celador.dashboard')->with('error', $mensaje);
         }
 
         // 3. Verificar si tiene turno activo como alimentador para hoy en agenda_turnos
@@ -52,7 +53,6 @@ class VerificarTurnoDiarioAlimentador
             ->first();
 
         if (! $turnoAlimentador) {
-            $mensaje = 'Acceso restringido: Hoy no tienes turno asignado para alimentar. Consulta la Agenda Operativa.';
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['message' => $mensaje, 'error' => 'SIN_TURNO_ALIMENTACION'], 403);
             }

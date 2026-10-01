@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToFinca;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AgendaTurno extends Model
 {
+    use BelongsToFinca;
     use HasFactory;
 
     protected $table = 'agenda_turnos';
@@ -77,12 +79,12 @@ class AgendaTurno extends Model
         $domingoAnterior = $lunes->copy()->subDay();
         $creados[] = self::updateOrCreate(
             [
+                'finca_id' => $fincaId,
                 'user_id' => $userId,
                 'fecha' => $domingoAnterior->toDateString(),
                 'rol_asignado' => self::ROL_SEGURIDAD_NOCHE,
             ],
             [
-                'finca_id' => $fincaId,
                 'tipo_dia' => self::TIPO_DOMINGO,
                 'estado' => self::ESTADO_PROGRAMADO,
                 'observaciones' => $observaciones ?? 'Asignación automática: guardia dominical previa a turno semanal de alimentación.',
@@ -94,12 +96,12 @@ class AgendaTurno extends Model
             $dia = $lunes->copy()->addDays($i);
             $creados[] = self::updateOrCreate(
                 [
+                    'finca_id' => $fincaId,
                     'user_id' => $userId,
                     'fecha' => $dia->toDateString(),
                     'rol_asignado' => self::ROL_ALIMENTADOR,
                 ],
                 [
-                    'finca_id' => $fincaId,
                     'tipo_dia' => self::TIPO_SEMANA,
                     'estado' => self::ESTADO_PROGRAMADO,
                     'observaciones' => $observaciones ?? 'Turno ordinario de alimentación de lunes a viernes.',
@@ -124,12 +126,12 @@ class AgendaTurno extends Model
 
         return self::updateOrCreate(
             [
+                'finca_id' => $fincaId,
                 'user_id' => $userId,
                 'fecha' => $dia->toDateString(),
                 'rol_asignado' => $rolAsignado,
             ],
             [
-                'finca_id' => $fincaId,
                 'tipo_dia' => $tipoDia,
                 'estado' => self::ESTADO_PROGRAMADO,
                 'observaciones' => $observaciones ?? 'Turno de fin de semana asignado en Agenda Operativa.',
