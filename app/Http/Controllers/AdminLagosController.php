@@ -24,7 +24,7 @@ class AdminLagosController extends Controller
         $fincaId = $request->user()->finca_id ?? 1;
 
         $lagos = Estanque::where('finca_id', $fincaId)
-            ->with(['especiePrincipal', 'samplings' => fn ($q) => $q->orderBy('sampling_date', 'desc')])
+            ->with(['especiePrincipal'])
             ->orderBy('name', 'asc')
             ->get();
 
@@ -33,6 +33,10 @@ class AdminLagosController extends Controller
         $totalBiomasa = round((float) $lagos->sum('biomass'), 2);
         $totalPecesVivos = (int) $lagos->sum('fish_population');
         $lagosListosPesca = $lagos->filter(fn ($e) => (float) $e->average_weight >= 450 || $e->status === 'En Cosecha');
+        $lagosActivosCount = $lagos->where('status', '!=', 'Inactivo')->count();
+        if ($lagosActivosCount === 0 && $lagos->isNotEmpty()) {
+            $lagosActivosCount = $lagos->count();
+        }
 
         $data = [
             'lagos' => $lagos,
@@ -40,6 +44,7 @@ class AdminLagosController extends Controller
             'lagos_listos_pesca' => $lagosListosPesca,
             'total_biomasa_kg' => $totalBiomasa,
             'total_peces_vivos' => $totalPecesVivos,
+            'lagos_activos_count' => $lagosActivosCount,
             'total_lagos_count' => $lagos->count(),
         ];
 
@@ -55,13 +60,17 @@ class AdminLagosController extends Controller
      */
     public function show(int|string $id): View|JsonResponse
     {
-        $lago = Estanque::with(['especiePrincipal', 'samplings' => fn ($q) => $q->orderBy('sampling_date', 'desc')])
+        $fincaId = request()->user()->finca_id ?? 1;
+
+        $lago = Estanque::where('finca_id', $fincaId)
+            ->with(['especiePrincipal', 'samplings' => fn ($q) => $q->orderBy('sampling_date', 'desc')])
             ->findOrFail($id);
 
         $data = [
             'lago' => $lago,
             'listo_pesca' => (float) $lago->average_weight >= 450 || $lago->status === 'En Cosecha',
             'muestreos' => $lago->samplings,
+            'dias_cultivo' => $lago->days_in_culture,
         ];
 
         if (request()->wantsJson()) {
@@ -162,14 +171,14 @@ class AdminLagosController extends Controller
     }
 
     /**
-     * Registra un nuevo lago/estanque y su siembra inicial de alevinos.
-     */
-    /**
-     * Registra un nuevo lago/estanque y su siembra inicial de alevinos.
+     * Registra un nuevo lago/estanque y su siembra inicial de alevinos de forma transaccional.
      */
     public function store(Request $request): RedirectResponse|JsonResponse
     {
         // Normalización de parámetros entrantes
+        if ($request->has('nombre') && ! $request->has('name')) {
+            $request->merge(['name' => $request->input('nombre')]);
+        }
         if ($request->has('codigo_estanque')) {
             if (! $request->has('name')) {
                 $request->merge(['name' => $request->input('codigo_estanque')]);
@@ -178,9 +187,18 @@ class AdminLagosController extends Controller
                 $request->merge(['code' => $request->input('codigo_estanque')]);
             }
         }
+        if ($request->has('codigo') && ! $request->has('code')) {
+            $request->merge(['code' => $request->input('codigo')]);
+        }
+        if ($request->has('tipo') && ! $request->has('tipo_estanque')) {
+            $request->merge(['tipo_estanque' => $request->input('tipo')]);
+        }
         $fechaSiembraInput = $request->input('stocked_at') ?? $request->input('stocking_date') ?? $request->input('fecha_siembra');
         if ($fechaSiembraInput) {
             $request->merge(['stocked_at' => $fechaSiembraInput]);
+        }
+        if ($request->has('cantidad_alevinos') && ! $request->has('fingerlings_stocked')) {
+            $request->merge(['fingerlings_stocked' => $request->input('cantidad_alevinos')]);
         }
         if ($request->has('cantidad_sembrada') && ! $request->has('fingerlings_stocked')) {
             $request->merge(['fingerlings_stocked' => $request->input('cantidad_sembrada')]);
@@ -188,11 +206,14 @@ class AdminLagosController extends Controller
         if ($request->has('peso_promedio_inicial') && ! $request->has('average_weight')) {
             $request->merge(['average_weight' => $request->input('peso_promedio_inicial')]);
         }
+        if ($request->has('peso_promedio') && ! $request->has('average_weight')) {
+            $request->merge(['average_weight' => $request->input('peso_promedio')]);
+        }
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:191'],
             'code' => ['nullable', 'string', 'max:50'],
-            'tipo_estanque' => ['required', 'string', 'max:100'],
+            'tipo_estanque' => ['required', 'string', 'regex:/^(tierra|geomembrana|concreto)$/i'],
             'especie_id' => ['required', 'exists:especies,id'],
             'stocked_at' => ['required', 'date'],
             'fingerlings_stocked' => ['required', 'integer', 'min:1'],
@@ -208,7 +229,7 @@ class AdminLagosController extends Controller
         $pesoPromedio = (float) $validated['average_weight'];
         $biomasaInicial = round(($pecesVivos * $pesoPromedio) / 1000, 2);
         $fechaSiembra = Carbon::parse($validated['stocked_at']);
-        $diasCultivo = (int) now()->diffInDays($fechaSiembra);
+        $diasCultivo = max(0, (int) $fechaSiembra->diffInDays(now()));
 
         $code = ! empty($validated['code'])
             ? $validated['code']
@@ -218,12 +239,14 @@ class AdminLagosController extends Controller
             ? $validated['numero_lote']
             : 'LOTE-'.date('Y').'-'.$code;
 
-        $estanque = DB::transaction(function () use ($fincaId, $validated, $code, $pecesVivos, $pesoPromedio, $biomasaInicial, $numeroLote, $user) {
+        $tipoEstanque = $validated['tipo_estanque'];
+
+        $estanque = DB::transaction(function () use ($fincaId, $validated, $code, $tipoEstanque, $pecesVivos, $pesoPromedio, $biomasaInicial, $numeroLote, $user) {
             $nuevoEstanque = Estanque::create([
                 'finca_id' => $fincaId,
                 'name' => $validated['name'],
                 'code' => $code,
-                'tipo_estanque' => $validated['tipo_estanque'],
+                'tipo_estanque' => $tipoEstanque,
                 'especie_id' => $validated['especie_id'],
                 'stocked_at' => $validated['stocked_at'],
                 'fingerlings_stocked' => $pecesVivos,
@@ -235,7 +258,7 @@ class AdminLagosController extends Controller
                 'alevinera_origen' => $validated['alevinera_origen'] ?? 'Origen Local',
             ]);
 
-            if ($user) {
+            if ($user && class_exists(ActividadTrabajador::class)) {
                 ActividadTrabajador::registrar(
                     $user,
                     'siembra_lago',
@@ -247,10 +270,14 @@ class AdminLagosController extends Controller
             return $nuevoEstanque;
         });
 
+        $diasCultivo = $estanque->days_in_culture;
+
         if ($request->wantsJson()) {
             return response()->json([
                 'message' => "Lago {$estanque->name} registrado exitosamente con biomasa inicial de {$biomasaInicial} kg y {$diasCultivo} días de cultivo.",
                 'data' => $estanque->load('especiePrincipal'),
+                'peces_vivos' => $pecesVivos,
+                'biomasa_kg' => $biomasaInicial,
                 'dias_cultivo' => $diasCultivo,
             ], 201);
         }

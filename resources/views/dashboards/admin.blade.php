@@ -33,6 +33,57 @@
         </div>
     </div>
 
+    <!-- Métricas Principales de Lagos y Biomasa -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <!-- Biomasa Total -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Biomasa Total</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1">
+                        {{ number_format($metricas_operativas['total_biomasa_kg'] ?? 0, 1, ',', '.') }} <span class="text-sm font-medium text-slate-400">kg</span>
+                    </h3>
+                </div>
+                <div class="h-12 w-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center text-xl shadow-inner border border-cyan-100">
+                    <i class="fa-solid fa-water"></i>
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Biomasa total en estanques del tenant</p>
+        </div>
+
+        <!-- Total Peces Vivos -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Peces Vivos</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1">
+                        {{ number_format($metricas_operativas['total_peces_vivos'] ?? 0, 0, ',', '.') }} <span class="text-sm font-medium text-slate-400">peces</span>
+                    </h3>
+                </div>
+                <div class="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shadow-inner border border-emerald-100">
+                    <i class="fa-solid fa-fish"></i>
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Población total activa calculada</p>
+        </div>
+
+        <!-- Lagos Activos -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Lagos Activos</p>
+                    <h3 class="text-2xl font-black text-slate-900 mt-1">
+                        {{ $metricas_operativas['lagos_activos_count'] ?? count($estanques ?? []) }} <span class="text-sm font-medium text-slate-400">estanques</span>
+                    </h3>
+                </div>
+                <div class="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shadow-inner border border-indigo-100">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Estanques con siembra y producción</p>
+        </div>
+    </div>
+
     <!-- 1. Métricas Operativas de Administrador -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <!-- Alertas de Bodega -->

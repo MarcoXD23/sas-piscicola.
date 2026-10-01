@@ -378,10 +378,9 @@
                             Tipo de Estanque <span class="text-rose-500">*</span>
                         </label>
                         <select name="tipo_estanque" required class="w-full rounded-lg border border-slate-300 py-2 px-3 text-xs text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900">
-                            <option value="Tierra">Tierra (Excavado)</option>
-                            <option value="Geomembrana">Geomembrana Circular</option>
-                            <option value="Concreto">Concreto / Raceway</option>
-                            <option value="Jaula Flotante">Jaula Flotante / Embalse</option>
+                            <option value="tierra">Tierra</option>
+                            <option value="geomembrana">Geomembrana</option>
+                            <option value="concreto">Concreto</option>
                         </select>
                     </div>
 

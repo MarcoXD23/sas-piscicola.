@@ -79,13 +79,22 @@ class RoleDashboardController extends Controller
 
         $lagosListosPesca = $ponds->filter(fn ($e) => (float) $e->average_weight >= 450 || $e->status === 'En Cosecha');
 
+        $lagosActivosCount = $ponds->where('status', '!=', 'Inactivo')->count();
+        if ($lagosActivosCount === 0 && $ponds->isNotEmpty()) {
+            $lagosActivosCount = $ponds->count();
+        }
+
         $data = [
             'rol_usuario' => 'jefe_mayor',
             'metricas_macro' => [
                 'biomasa_total_kg' => $totalBiomass,
+                'total_biomasa_kg' => $totalBiomass,
                 'alevinos_sembrados_total' => $totalFingerlings,
                 'peces_vivos_total' => $totalPecesVivos,
-                'estanques_activos_count' => $ponds->count(),
+                'total_peces_vivos' => $totalPecesVivos,
+                'estanques_activos_count' => $lagosActivosCount,
+                'lagos_activos_count' => $lagosActivosCount,
+                'total_lagos_count' => $ponds->count(),
                 'lagos_listos_pesca_count' => $lagosListosPesca->count(),
                 'kilos_cosecha_proyectados' => $projectedKg,
                 'ventas_mes_dinero' => $salesThisMonth,
@@ -146,6 +155,10 @@ class RoleDashboardController extends Controller
 
         $lagosListosPesca = $estanques->filter(fn ($e) => (float) $e->average_weight >= 450 || $e->status === 'En Cosecha');
         $totalBultosBodega = (float) AlimentoBodega::where('finca_id', $fincaId)->sum('stock_bultos');
+        $lagosActivosCount = $estanques->where('status', '!=', 'Inactivo')->count();
+        if ($lagosActivosCount === 0 && $estanques->isNotEmpty()) {
+            $lagosActivosCount = $estanques->count();
+        }
 
         $data = [
             'rol_usuario' => 'administrador',
@@ -156,7 +169,12 @@ class RoleDashboardController extends Controller
                 'recaudo_ventas_hoy' => round((float) $todaySales->sum('total_amount'), 2),
                 'kilos_pescado_fiado_pendiente' => round((float) $pendingFishCredits->sum('kilos'), 2),
                 'total_biomasa_kg' => round((float) $estanques->sum('biomass'), 2),
+                'biomasa_total_kg' => round((float) $estanques->sum('biomass'), 2),
                 'total_peces_vivos' => (int) $estanques->sum('fish_population'),
+                'peces_vivos_total' => (int) $estanques->sum('fish_population'),
+                'lagos_activos_count' => $lagosActivosCount,
+                'estanques_activos_count' => $lagosActivosCount,
+                'total_lagos_count' => $estanques->count(),
                 'lagos_listos_pesca_count' => $lagosListosPesca->count(),
             ],
             'estanques' => $estanques,
