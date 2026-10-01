@@ -8,14 +8,16 @@
             <h1 class="text-2xl font-bold tracking-tight text-slate-900">Inventario Físico de Concentrados en Bodega</h1>
             <p class="text-sm text-slate-500 mt-1">Control de bultos, pesaje en kilos y autonomía proyectada de alimentación.</p>
         </div>
+        @if(auth()->user()?->isPropietario() || auth()->user()?->isOwner())
         <div class="flex items-center gap-3">
             <button type="button" onclick="document.getElementById('modalEntrada').classList.remove('hidden')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-900 hover:bg-slate-800 focus:outline-none">
                 <svg class="w-4 h-4 mr-1.5 stroke-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                Recepción de Camión (Entrada)
+                Recepción de Concentrado (Entrada)
             </button>
         </div>
+        @endif
     </div>
 
     <!-- Métricas -->
@@ -121,41 +123,53 @@
     </div>
 </div>
 
-<!-- Modal Entrada de Camión -->
+<!-- Modal Entrada de Concentrado Físico (Exclusivo Propietario) -->
 <div id="modalEntrada" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl border border-slate-200">
-        <h3 class="text-lg font-bold text-slate-900 mb-4">Recepción de Camión / Compra</h3>
-        <form method="POST" action="{{ route('admin.bodega.entrada') }}" class="space-y-4">
+        <h3 class="text-lg font-bold text-slate-900 mb-1">Recepción de Alimento en Bodega</h3>
+        <p class="text-xs text-slate-500 mb-4">Registro estrictamente físico y logístico de bultos y pesaje. Sin costos ni valores monetarios.</p>
+        <form method="POST" action="{{ route('admin.inventario-alimento.ingresar') }}" class="space-y-4">
             @csrf
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Fecha Recepción</label>
+                    <input type="date" name="fecha_recepcion" value="{{ date('Y-m-d') }}" required class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Proveedor / Fábrica</label>
+                    <input type="text" name="proveedor" required placeholder="Italcol, Solla, etc." class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
+                </div>
+            </div>
             <div>
-                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Concentrado</label>
-                <select name="alimento_id" required class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Tipo de Concentrado (% Proteína / Etapa)</label>
+                <input type="text" name="tipo_concentrado" list="listaConcentrados" required placeholder="Ej: Iniciación 45%, Levante 34%, Engorde 30%" class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
+                <datalist id="listaConcentrados">
                     @foreach($alimentos as $a)
-                        <option value="{{ $a->id }}">{{ $a->nombre_concentrado }} (Actual: {{ $a->stock_bultos }} bultos)</option>
+                        <option value="{{ $a->nombre_concentrado }}">
                     @endforeach
-                </select>
+                    <option value="Iniciación 45%">
+                    <option value="Levante 34%">
+                    <option value="Engorde 32%">
+                    <option value="Engorde 30%">
+                </datalist>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Cantidad Bultos</label>
-                    <input type="number" step="0.5" min="0.5" name="cantidad_bultos" required class="w-full border-slate-300 rounded-md shadow-sm text-sm">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Bultos Recibidos</label>
+                    <input type="number" step="0.5" min="0.5" name="bultos_recibidos" required placeholder="Ej: 25" class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Costo Unitario Bulto</label>
-                    <input type="number" step="100" min="0" name="costo_unitario_bulto" placeholder="125000" class="w-full border-slate-300 rounded-md shadow-sm text-sm">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Peso por Bulto (kg)</label>
+                    <input type="number" step="0.1" min="1" name="peso_bulto_kg" value="40.0" required class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
                 </div>
             </div>
             <div>
-                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Proveedor</label>
-                <input type="text" name="proveedor" placeholder="Italcol, Solla, etc." class="w-full border-slate-300 rounded-md shadow-sm text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Observaciones</label>
-                <textarea name="observaciones" rows="2" class="w-full border-slate-300 rounded-md shadow-sm text-sm"></textarea>
+                <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Número de Lote de Fábrica</label>
+                <input type="text" name="lote_fabrica" placeholder="Ej: LOT-ITAL-2026-88" class="w-full border-slate-300 rounded-md shadow-sm text-sm focus:ring-slate-900 focus:border-slate-900">
             </div>
             <div class="flex justify-end gap-3 pt-3 border-t border-slate-200">
                 <button type="button" onclick="document.getElementById('modalEntrada').classList.add('hidden')" class="px-4 py-2 text-sm text-slate-700 hover:text-slate-900">Cancelar</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800">Registrar Entrada</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800">Registrar Llegada</button>
             </div>
         </form>
     </div>

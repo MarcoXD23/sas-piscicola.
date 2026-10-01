@@ -122,7 +122,20 @@ class InventarioAlimentoController extends Controller
             $alimentoBodega->increment('stock_bultos', $bultos);
             $alimentoBodega->increment('stock_kilos_actual', $kilosTotales);
 
-            // 4. Registrar en bitácora de actividades
+            // 4. Registrar en movimientos_bodega (histórico de auditoría)
+            MovimientoBodega::create([
+                'finca_id' => $fincaId,
+                'alimento_id' => $alimentoBodega->id,
+                'user_id' => $user?->id,
+                'tipo_movimiento' => MovimientoBodega::TIPO_ENTRADA_COMPRA,
+                'cantidad_bultos' => $bultos,
+                'cantidad_kilos' => $kilosTotales,
+                'fecha' => $validated['fecha_recepcion'],
+                'proveedor' => $validated['proveedor'],
+                'observaciones' => ! empty($validated['lote_fabrica']) ? "Lote: {$validated['lote_fabrica']}" : 'Recepción física de concentrado',
+            ]);
+
+            // 5. Registrar en bitácora de actividades
             ActividadTrabajador::registrar(
                 $user,
                 ActividadTrabajador::ACCION_INGRESO_ALIMENTO,

@@ -445,6 +445,11 @@ class TrabajadorController extends Controller
      */
     public function storeAlimentacion(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if ($user && ! $user->hasRole(['operario_campo', 'operario_alimentador', 'trabajador', 'tecnico_acuicola', 'propietario', 'admin', 'jefe_mayor'])) {
+            abort(403, 'Acceso no autorizado para tu rol en El SAS Piscícola.');
+        }
+
         $validated = $request->validate([
             'pond_id' => ['required', 'exists:ponds,id'],
             'amount_kg' => ['required', 'numeric', 'min:0.1'],
@@ -454,16 +459,15 @@ class TrabajadorController extends Controller
             'observations' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $user = $request->user();
         $pond = Estanque::findOrFail($validated['pond_id']);
         $amountKg = (float) $validated['amount_kg'];
         $appetite = $validated['appetite_level'];
-        $fincaId = $pond->finca_id ?? $user->finca_id ?? 1;
+        $fincaId = $pond->finca_id ?? $user?->finca_id ?? 1;
 
         // 1. Identificar o deducir el tipo de alimento en bodega
         $alimento = null;
         if (! empty($validated['alimento_id'])) {
-            $alimento = AlimentoBodega::find($validated['alimento_id']);
+            $alimento = AlimentoBodega::where('finca_id', $fincaId)->find($validated['alimento_id']);
         }
 
         if (! $alimento) {
@@ -477,74 +481,109 @@ class TrabajadorController extends Controller
             }
 
             if (! $alimento) {
-                $alimento = AlimentoBodega::where('finca_id', $fincaId)->first() ?? AlimentoBodega::first();
+                $alimento = AlimentoBodega::where('finca_id', $fincaId)->first();
             }
         }
 
-        // 2. Descuento automático de stock en AlimentoBodega y registro en MovimientoBodega
-        if ($alimento) {
-            $pesoBulto = (float) ($alimento->peso_bulto_kg ?: 40.00);
-            $bultosDescontar = round($amountKg / $pesoBulto, 2);
+        // 2. Transacción Atómica de Descuento y Registro
+        $resultado = DB::transaction(function () use ($validated, $user, $pond, $amountKg, $appetite, $fincaId, $alimento) {
+            $alimentoBloqueado = null;
+            if ($alimento) {
+                $alimentoBloqueado = AlimentoBodega::where('id', $alimento->id)
+                    ->where('finca_id', $fincaId)
+                    ->lockForUpdate()
+                    ->first();
+            }
 
-            $nuevoStockKg = max(0, (float) $alimento->stock_kilos_actual - $amountKg);
-            $nuevoStockBultos = max(0, round((float) $alimento->stock_bultos - ($amountKg / $pesoBulto), 2));
+            // Si hay alimento en bodega asociado o disponible en la finca, validar stock
+            if ($alimentoBloqueado) {
+                if ((float) $alimentoBloqueado->stock_kilos_actual < $amountKg) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'amount_kg' => 'Stock insuficiente en bodega para suministrar esa cantidad.',
+                    ]);
+                }
 
-            $alimento->stock_kilos_actual = $nuevoStockKg;
-            $alimento->stock_bultos = $nuevoStockBultos;
-            $alimento->save();
+                $pesoBulto = (float) ($alimentoBloqueado->peso_bulto_kg ?: 40.00);
+                $bultosDescontar = round($amountKg / $pesoBulto, 2);
 
-            MovimientoBodega::create([
-                'finca_id' => $alimento->finca_id,
-                'alimento_id' => $alimento->id,
-                'user_id' => $user->id,
-                'tipo_movimiento' => MovimientoBodega::TIPO_SALIDA_ALIMENTACION,
-                'cantidad_bultos' => $bultosDescontar,
-                'cantidad_kilos' => $amountKg,
-                'fecha' => now()->toDateString(),
-                'proveedor' => null,
-                'observaciones' => "Alimentación a {$pond->name} ({$pond->code}) - Apetito: {$appetite}",
+                $nuevoStockKg = max(0, round((float) $alimentoBloqueado->stock_kilos_actual - $amountKg, 2));
+                $nuevoStockBultos = max(0, round($nuevoStockKg / $pesoBulto, 2));
+
+                $alimentoBloqueado->stock_kilos_actual = $nuevoStockKg;
+                $alimentoBloqueado->stock_bultos = $nuevoStockBultos;
+                $alimentoBloqueado->save();
+
+                MovimientoBodega::create([
+                    'finca_id' => $fincaId,
+                    'alimento_id' => $alimentoBloqueado->id,
+                    'user_id' => $user?->id,
+                    'tipo_movimiento' => MovimientoBodega::TIPO_SALIDA_ALIMENTACION,
+                    'cantidad_bultos' => $bultosDescontar,
+                    'cantidad_kilos' => $amountKg,
+                    'fecha' => now()->toDateString(),
+                    'proveedor' => null,
+                    'observaciones' => "Alimentación a {$pond->name} ({$pond->code}) - Apetito: {$appetite}",
+                ]);
+
+                // Sincronizar InventarioAlimento si existe
+                $inv = \App\Models\InventarioAlimento::where('finca_id', $fincaId)
+                    ->where('tipo_concentrado', $alimentoBloqueado->nombre_concentrado)
+                    ->first();
+                if ($inv && (float) $inv->stock_actual_kg >= $amountKg) {
+                    $inv->decrement('stock_actual_kg', $amountKg);
+                }
+            }
+
+            // 3. Sincronización con FeedInventory tradicional
+            $feed = isset($validated['feed_inventory_id'])
+                ? FeedInventory::find($validated['feed_inventory_id'])
+                : FeedInventory::where('finca_id', $fincaId)->first();
+
+            if ($feed && $feed->quantity_kg >= $amountKg) {
+                $feed->decrement('quantity_kg', $amountKg);
+            }
+
+            $log = FeedingLog::create([
+                'finca_id' => $fincaId,
+                'user_id' => $user?->id ?? 1,
+                'pond_id' => $pond->id,
+                'feed_inventory_id' => $feed?->id,
+                'feeding_date' => now()->toDateString(),
+                'amount_kg' => $amountKg,
+                'appetite_level' => $appetite,
+                'feed_name' => $alimentoBloqueado?->nombre_concentrado ?? ($feed?->name ?? 'Concentrado Piscícola Estándar'),
+                'feed_brand' => $feed?->brand ?? 'Italcol',
+                'feed_type' => $feed?->feed_type ?? 'Engorde',
+                'feed_protein_percentage' => $alimentoBloqueado?->proteina_porcentaje ?? ($feed?->protein_percentage ?? 30.0),
+                'observations' => $validated['observations'] ?? null,
             ]);
-        }
 
-        // 3. Sincronización con FeedInventory tradicional
-        $feed = isset($validated['feed_inventory_id'])
-            ? FeedInventory::find($validated['feed_inventory_id'])
-            : FeedInventory::where('finca_id', $pond->finca_id)->first() ?? FeedInventory::first();
+            if ($user) {
+                \App\Models\ActividadTrabajador::registrar(
+                    $user,
+                    \App\Models\ActividadTrabajador::ACCION_ALIMENTACION,
+                    "Alimentó estanque {$pond->name} con {$amountKg} kg de concentrado (Apetito: {$appetite}).",
+                    $pond->id
+                );
+            }
 
-        if ($feed && $feed->quantity_kg >= $amountKg) {
-            $feed->decrement('quantity_kg', $amountKg);
-        }
+            return [
+                'log' => $log,
+                'alimento' => $alimentoBloqueado,
+            ];
+        });
 
-        $log = FeedingLog::create([
-            'finca_id' => $pond->finca_id,
-            'user_id' => $user->id,
-            'pond_id' => $pond->id,
-            'feed_inventory_id' => $feed?->id,
-            'feeding_date' => now()->toDateString(),
-            'amount_kg' => $amountKg,
-            'appetite_level' => $appetite,
-            'feed_name' => $alimento?->nombre_concentrado ?? ($feed?->name ?? 'Concentrado Piscícola Estándar'),
-            'feed_brand' => $feed?->brand ?? 'Italcol',
-            'feed_type' => $feed?->feed_type ?? 'Engorde',
-            'feed_protein_percentage' => $alimento?->proteina_porcentaje ?? ($feed?->protein_percentage ?? 30.0),
-            'observations' => $validated['observations'] ?? null,
-        ]);
-
-        \App\Models\ActividadTrabajador::registrar(
-            $user,
-            \App\Models\ActividadTrabajador::ACCION_ALIMENTACION,
-            "Alimentó estanque {$pond->name} con {$amountKg} kg de concentrado (Apetito: {$appetite}).",
-            $pond->id
-        );
+        $log = $resultado['log'];
+        $alimentoBloqueado = $resultado['alimento'];
 
         return response()->json([
             'message' => "Alimentación de {$amountKg} kg registrada para {$pond->name} con apetito '{$appetite}'. Stock de bodega actualizado.",
             'data' => $log->load('pond:id,name', 'user:id,name'),
-            'alimento_bodega' => $alimento ? [
-                'id' => $alimento->id,
-                'nombre' => $alimento->nombre_concentrado,
-                'stock_kilos_actual' => $alimento->stock_kilos_actual,
-                'stock_bultos' => $alimento->stock_bultos,
+            'alimento_bodega' => $alimentoBloqueado ? [
+                'id' => $alimentoBloqueado->id,
+                'nombre' => $alimentoBloqueado->nombre_concentrado,
+                'stock_kilos_actual' => $alimentoBloqueado->stock_kilos_actual,
+                'stock_bultos' => $alimentoBloqueado->stock_bultos,
             ] : null,
         ], 201);
     }

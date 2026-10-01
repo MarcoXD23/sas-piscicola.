@@ -63,6 +63,19 @@ class AlimentacionController extends Controller
         $fecha = $validated['fecha'] ?? now()->toDateString();
 
         // 1. Localizar el registro de inventario de bodega correspondiente
+        $alimentoBodega = null;
+        if (! empty($validated['alimento_id'])) {
+            $alimentoBodega = \App\Models\AlimentoBodega::where('finca_id', $fincaId)->find($validated['alimento_id']);
+        }
+        if (! $alimentoBodega && ! empty($validated['tipo_concentrado'])) {
+            $alimentoBodega = \App\Models\AlimentoBodega::where('finca_id', $fincaId)
+                ->where('nombre_concentrado', 'like', '%'.$validated['tipo_concentrado'].'%')
+                ->first();
+        }
+        if (! $alimentoBodega) {
+            $alimentoBodega = \App\Models\AlimentoBodega::where('finca_id', $fincaId)->first();
+        }
+
         $alimento = null;
         if (! empty($validated['inventario_alimento_id'])) {
             $alimento = InventarioAlimento::find($validated['inventario_alimento_id']);
@@ -72,38 +85,82 @@ class AlimentacionController extends Controller
                 ->first();
         }
 
+        if (! $alimento && $alimentoBodega) {
+            $alimento = InventarioAlimento::firstOrCreate(
+                [
+                    'finca_id' => $fincaId,
+                    'tipo_concentrado' => $alimentoBodega->nombre_concentrado,
+                ],
+                [
+                    'proteina_porcentaje' => $alimentoBodega->proteina_porcentaje ?? 32.00,
+                    'stock_actual_kg' => (float) $alimentoBodega->stock_kilos_actual,
+                    'stock_minimo_alerta_kg' => 100.00,
+                    'costo_unitario' => 0.00,
+                ]
+            );
+        }
+
         if (! $alimento) {
             $alimento = InventarioAlimento::where('finca_id', $fincaId)->first();
         }
 
-        // Si no existe aún en inventario_alimento, crearlo o sincronizarlo
+        // Si no existe aún en inventario_alimento ni en bodega
         if (! $alimento) {
             $alimento = InventarioAlimento::create([
                 'finca_id' => $fincaId,
                 'tipo_concentrado' => $validated['tipo_concentrado'] ?? 'Concentrado Comercial 32%',
                 'proteina_porcentaje' => 32.00,
-                'stock_actual_kg' => 500.00,
+                'stock_actual_kg' => 0.00,
                 'stock_minimo_alerta_kg' => 100.00,
-                'costo_unitario' => 3200.00,
+                'costo_unitario' => 0.00,
             ]);
         }
 
         // 2. Transacción Atómica de Base de Datos para asegurar concurrencia y consistencia contable
-        $resultado = DB::transaction(function () use ($pond, $alimento, $cantidadKg, $fecha, $validated, $user, $fincaId) {
+        $resultado = DB::transaction(function () use ($pond, $alimento, $alimentoBodega, $cantidadKg, $fecha, $validated, $user, $fincaId) {
             // Bloqueo pesimista para evitar carreras entre operarios en campo
             $alimentoBloqueado = InventarioAlimento::where('id', $alimento->id)->lockForUpdate()->first();
 
-            if ((float) $alimentoBloqueado->stock_actual_kg < $cantidadKg) {
+            $stockActual = (float) $alimentoBloqueado->stock_actual_kg;
+            $bodegaBloqueado = null;
+            if ($alimentoBodega) {
+                $bodegaBloqueado = \App\Models\AlimentoBodega::where('id', $alimentoBodega->id)->lockForUpdate()->first();
+                if ($bodegaBloqueado) {
+                    $stockActual = min($stockActual, (float) $bodegaBloqueado->stock_kilos_actual);
+                }
+            }
+
+            if ($stockActual < $cantidadKg) {
                 return [
                     'success' => false,
                     'error' => 'INSUFFICIENT_STOCK',
-                    'stock_actual' => (float) $alimentoBloqueado->stock_actual_kg,
+                    'stock_actual' => $stockActual,
                     'requerido' => $cantidadKg,
                 ];
             }
 
-            // Descontar stock de bodega
+            // Descontar stock de inventario_alimento
             $alimentoBloqueado->decrement('stock_actual_kg', $cantidadKg);
+
+            // Sincronizar AlimentoBodega y registrar MovimientoBodega
+            if ($bodegaBloqueado) {
+                $pesoBulto = (float) ($bodegaBloqueado->peso_bulto_kg ?: 40.00);
+                $bultosDescontar = round($cantidadKg / $pesoBulto, 2);
+                $bodegaBloqueado->stock_kilos_actual = max(0, round((float) $bodegaBloqueado->stock_kilos_actual - $cantidadKg, 2));
+                $bodegaBloqueado->stock_bultos = max(0, round((float) $bodegaBloqueado->stock_kilos_actual / $pesoBulto, 2));
+                $bodegaBloqueado->save();
+
+                \App\Models\MovimientoBodega::create([
+                    'finca_id' => $fincaId,
+                    'alimento_id' => $bodegaBloqueado->id,
+                    'user_id' => $user?->id ?? 1,
+                    'tipo_movimiento' => \App\Models\MovimientoBodega::TIPO_SALIDA_ALIMENTACION,
+                    'cantidad_bultos' => $bultosDescontar,
+                    'cantidad_kilos' => $cantidadKg,
+                    'fecha' => $fecha,
+                    'observaciones' => "Alimentación lago {$pond->name} ({$pond->code})",
+                ]);
+            }
 
             // También sincronizar con FeedInventory si existe modelo legacy
             $feedLegacy = FeedInventory::where('finca_id', $fincaId)->first();
@@ -132,8 +189,12 @@ class AlimentacionController extends Controller
 
         if (! $resultado['success']) {
             return response()->json([
-                'message' => 'Stock insuficiente en la bodega para registrar esta ración de alimentación.',
+                'message' => 'Stock insuficiente en bodega para suministrar esa cantidad.',
                 'error' => 'INSUFFICIENT_STOCK',
+                'errors' => [
+                    'amount_kg' => ['Stock insuficiente en bodega para suministrar esa cantidad.'],
+                    'cantidad_kg' => ['Stock insuficiente en bodega para suministrar esa cantidad.'],
+                ],
                 'alimento' => $alimento->tipo_concentrado,
                 'stock_disponible_kg' => $resultado['stock_actual'],
                 'cantidad_solicitada_kg' => $resultado['requerido'],
