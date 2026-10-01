@@ -210,7 +210,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Bitácora de Actividades y Trazabilidad de Trabajadores
     Route::get('/admin/actividades', [ActividadTrabajadorController::class, 'index'])
-        ->middleware('role:propietario,administrador,admin,tecnico_acuicola')
+        ->middleware('role:propietario,administrador,admin,jefe_mayor,owner,jefe_finca,jefe')
         ->name('admin.actividades.index');
 
     // Módulo de Gestión de Lagos, Biomasa, Tiempo de Cultivo y Muestreos Sabatinos

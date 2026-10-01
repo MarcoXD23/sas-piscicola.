@@ -183,13 +183,13 @@
         </a>
         @endif
 
-        {{-- Bitácora de Actividades de Trabajadores --}}
-        @if(auth()->check() && auth()->user()->hasRole(["administrador", "admin", "jefe_mayor", "owner", "jefe_finca", "jefe", "propietario", "tecnico_acuicola"]))
+        {{-- Registro de Actividades de Trabajadores (Exclusivo Propietario y Administrador) --}}
+        @if(auth()->check() && auth()->user()->hasRole(["administrador", "admin", "jefe_mayor", "owner", "jefe_finca", "jefe", "propietario"]))
         <a href="{{ route('admin.actividades.index') }}"
            class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition duration-150 {{ request()->routeIs('admin.actividades.*') ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 font-semibold' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}"
-           title="Bitácora de Actividades de Trabajadores">
+           title="Registro de Actividades">
             <i class="fa-solid fa-clock-rotate-left text-base w-5 text-center text-teal-400 group-hover:scale-110 transition-transform"></i>
-            <span :class="{ 'lg:hidden': sidebarCollapsed }">Bitácora Actividades</span>
+            <span :class="{ 'lg:hidden': sidebarCollapsed }">Registro de Actividades</span>
         </a>
         @endif
 

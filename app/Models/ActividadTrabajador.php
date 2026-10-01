@@ -14,11 +14,17 @@ class ActividadTrabajador extends Model
 
     public const ACCION_ALIMENTACION = 'alimentacion';
 
+    public const ACCION_SUMINISTRO_ALIMENTO = 'suministro_alimento';
+
     public const ACCION_MORTALIDAD = 'mortalidad';
+
+    public const ACCION_REPORTE_MORTALIDAD = 'reporte_mortalidad';
 
     public const ACCION_TRASLADO = 'traslado_peces';
 
     public const ACCION_RONDA_NOCTURNA = 'ronda_nocturna';
+
+    public const ACCION_RONDA_SEGURIDAD = 'ronda_seguridad';
 
     public const ACCION_INGRESO_ALIMENTO = 'ingreso_alimento';
 
