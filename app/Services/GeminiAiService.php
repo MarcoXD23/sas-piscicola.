@@ -179,6 +179,13 @@ Reglas del Negocio y Conocimiento de Dominio que DEBES aplicar con precisión:
    - Responde de forma cordial, ejecutiva, clara y en español de Colombia.
    - Utiliza formato Markdown limpio (viñetas, negritas, fórmulas matemáticas desglosadas).
    - Si el usuario te pide un cálculo (ej. cuántos kilos limpios dan 500 kg brutos en 10 canastillas de 2 kg, o cuánto debe pagar un jornalero con 3 jornales de $50.000 y 4 kilos fiados), haz la operación matemática paso a paso.
+
+7. CALIDAD DE AGUA Y MANEJO ZOOTÉCNICO (COLOMBIA / TOLIMA):
+   - Oxígeno disuelto crítico: Alerta inmediata si O₂ < 3.5 mg/L. Encendido urgente de aireadores mecánicos (especialmente en la madrugada) y suspender la primera ración de alimento.
+   - Temperatura óptima: 26°C a 30°C para Mojarra Roja, Cachama Blanca, Bocachico y Bagre. Reducir ración 30%-50% si temperatura < 24°C o > 32°C.
+   - pH óptimo: 6.5 a 8.5.
+   - Nutrición por etapas (% Peso Vivo): Iniciación (1-20g): 8.0%-10.0% PV (45% PB); Levante (20-150g): 3.5%-5.0% PV (34%-38% PB); Engorde (150-350g): 2.0%-3.0% PV (32% PB); Acabado (>350g): 1.5%-1.8% PV (28%-30% PB).
+   - Sanidad y Retiro ICA: Respetar estrictamente los tiempos de retiro de medicamentos veterinarios antes de cosecha (talla comercial ≥ 450g).
 PROMPT;
     }
 
@@ -188,6 +195,22 @@ PROMPT;
     protected function generateLocalFallbackResponse(string $message): string
     {
         $msg = mb_strtolower(trim($message), 'UTF-8');
+
+        // Protocolo de Oxígeno Disuelto (< 3.5 mg/L) y Calidad de Agua
+        if (str_contains($msg, 'oxigeno') || str_contains($msg, 'oxígeno') || str_contains($msg, '3.5') || str_contains($msg, '3.0') || str_contains($msg, 'aireador') || str_contains($msg, 'aireadores') || str_contains($msg, 'boqueo') || str_contains($msg, 'asfixia')) {
+            return <<<'MARKDOWN'
+**PROTOCOLO DE EMERGENCIA ZOOTÉCNICA: OXÍGENO DISUELTO (< 3.5 mg/L)**
+
+1. **Encendido Inmediato de Aireadores:**
+   - Activar al 100% los aireadores de paletas y splash, con máxima prioridad en horas de la madrugada (01:00 AM - 06:00 AM).
+2. **Suspensión de Alimentación:**
+   - **Suspender la primera ración.** La digestión incrementa el consumo de oxígeno (calor específico dinámico), generando mortalidad masiva.
+3. **Parámetros Óptimos de Calidad de Agua en Tolima:**
+   - **Oxígeno disuelto:** > 4.5 mg/L (Crítico < 3.5 mg/L, letal < 2.0 mg/L).
+   - **Temperatura:** 26°C a 30°C (reducir ración 30%-50% si < 24°C o > 32°C).
+   - **pH:** 6.5 a 8.5.
+MARKDOWN;
+        }
 
         if (str_contains($msg, 'precio') || str_contains($msg, 'tarifa') || str_contains($msg, 'cuanto vale') || str_contains($msg, 'cuesta')) {
             return <<<'MARKDOWN'
@@ -250,11 +273,17 @@ MARKDOWN;
 
         if (str_contains($msg, 'aliment') || str_contains($msg, 'raci') || str_contains($msg, 'concentrado') || str_contains($msg, 'estanque') || str_contains($msg, 'biomasa')) {
             return <<<'MARKDOWN'
-**Alimentación y Cálculo de Raciones Diarias:**
+**Alimentación y Cálculo de Raciones Diarias (El SAS Piscícola):**
 
-* **Mojarra Roja / Tilapia:** La ración alimenticia recomendada varía entre el **1.8% y el 3.5% de la biomasa total estimada**, ajustada según la temperatura del agua y el nivel de oxígeno disuelto (> 4.0 mg/L).
-* **Bloques de Alimentación:** Repartir en 3 a 4 raciones diarias (07:30 AM, 11:30 AM, 03:00 PM y 05:00 PM).
-* **Control de Inventario:** Cada registro en la bitácora descuenta automáticamente los kilos aplicados del lote de alimento en bodega.
+* **Tabla de % Peso Vivo (% PV) por Etapa:**
+  - **Iniciación (1g a 20g):** 8.0% - 10.0% PV (Concentrado 45% PB, 5-6 raciones/día).
+  - **Levante (20g a 150g):** 3.5% - 5.0% PV (Concentrado 34% - 38% PB, 3-4 raciones/día).
+  - **Engorde (150g a 350g):** 2.0% - 3.0% PV (Concentrado 32% PB, 2-3 raciones/día).
+  - **Acabado (> 350g):** 1.5% - 1.8% PV (Concentrado 28% - 30% PB, 2 raciones/día).
+* **Criterios de Suspensión:**
+  - Si el oxígeno matutino es < 3.5 mg/L: **Suspender la primera ración.**
+  - Si la temperatura es < 24°C o > 32°C: Reducir entre 30% y 50%.
+* **Control de Inventario:** Cada registro descuenta automáticamente los kilos del lote en bodega.
 MARKDOWN;
         }
 

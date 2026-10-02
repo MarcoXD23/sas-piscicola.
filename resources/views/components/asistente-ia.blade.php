@@ -47,12 +47,12 @@
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <h3 class="text-xs sm:text-sm font-bold text-white tracking-tight">Asistente Técnico Acuícola</h3>
-                        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-medium text-slate-300 border border-slate-700">Asistente Gemini</span>
+                        <h3 class="text-xs sm:text-sm font-bold text-white tracking-tight">Asistente Técnico Acuícola - El SAS Piscícola</h3>
+                        <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-medium text-cyan-300 border border-slate-700">Asistente Gemini</span>
                     </div>
                     <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span class="text-emerald-400 font-medium">En línea</span>
+                        <span class="text-emerald-400 font-medium">En Línea</span>
                         <span class="text-slate-600">•</span>
                         <span class="text-slate-400">Asistente IA Piscícola</span>
                     </div>
@@ -88,7 +88,7 @@
                 </div>
                 <div class="max-w-[88%] rounded-2xl rounded-tl-xs bg-white p-3.5 shadow-xs border border-slate-200 text-xs text-slate-700 space-y-2">
                     <p class="font-medium text-slate-900 leading-relaxed">
-                        Hola. Soy tu asistente técnico acuícola. ¿En qué te ayudo hoy con los lagos, la calidad del agua o las raciones de alimento?
+                        Hola. Soy tu asistente técnico acuícola. Puedo ayudarte con el estado de tus lagos, raciones de alimento, calidad de agua y alertas sanitarias.
                     </p>
                     <div class="text-[10px] text-slate-400 text-right font-mono" x-text="currentTime"></div>
                 </div>
@@ -101,30 +101,39 @@
                     <span>Consultas Rápidas</span>
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <button @click="sendPredefined('¿Qué hago si el oxígeno baja de 3.0 mg/L?')"
+                    <button @click="sendPredefined('¿Cómo está la biomasa y los lagos hoy?')"
                             type="button"
                             class="w-full text-left px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50 text-slate-700 hover:text-cyan-900 transition text-xs font-medium shadow-2xs flex items-center justify-between group">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-water text-cyan-600 group-hover:scale-110 transition"></i>
-                            <span>¿Qué hago si el oxígeno baja de 3.0 mg/L?</span>
+                            <i class="fa-solid fa-chart-pie text-cyan-600 group-hover:scale-110 transition"></i>
+                            <span>¿Cómo está la biomasa y los lagos hoy?</span>
                         </span>
                         <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 group-hover:text-cyan-600 transition"></i>
                     </button>
-                    <button @click="sendPredefined('¿Cómo calcular la ración de hoy?')"
+                    <button @click="sendPredefined('¿Qué hacer si el oxígeno baja de 3.5 mg/L?')"
+                            type="button"
+                            class="w-full text-left px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-red-500 hover:bg-red-50 text-slate-700 hover:text-red-900 transition text-xs font-medium shadow-2xs flex items-center justify-between group">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-water text-red-600 group-hover:scale-110 transition"></i>
+                            <span>¿Qué hacer si el oxígeno baja de 3.5 mg/L?</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 group-hover:text-red-600 transition"></i>
+                    </button>
+                    <button @click="sendPredefined('Calcular ración recomendada según peso')"
                             type="button"
                             class="w-full text-left px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 transition text-xs font-medium shadow-2xs flex items-center justify-between group">
                         <span class="flex items-center gap-2">
                             <i class="fa-solid fa-calculator text-emerald-600 group-hover:scale-110 transition"></i>
-                            <span>¿Cómo calcular la ración de hoy?</span>
+                            <span>Calcular ración recomendada según peso</span>
                         </span>
                         <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 group-hover:text-emerald-600 transition"></i>
                     </button>
-                    <button @click="sendPredefined('Resumen de lagos listos para cosecha')"
+                    <button @click="sendPredefined('Inventario disponible en bodega')"
                             type="button"
                             class="w-full text-left px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-amber-500 hover:bg-amber-50 text-slate-700 hover:text-amber-900 transition text-xs font-medium shadow-2xs flex items-center justify-between group">
                         <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-scale-balanced text-amber-600 group-hover:scale-110 transition"></i>
-                            <span>Resumen de lagos listos para cosecha</span>
+                            <i class="fa-solid fa-warehouse text-amber-600 group-hover:scale-110 transition"></i>
+                            <span>Inventario disponible en bodega</span>
                         </span>
                         <i class="fa-solid fa-chevron-right text-[10px] text-slate-400 group-hover:text-amber-600 transition"></i>
                     </button>
@@ -163,7 +172,7 @@
                 </div>
             </template>
 
-            <!-- Animación de Carga: Escribiendo... -->
+            <!-- Animación de Carga: Pensando... -->
             <div x-show="isLoading"
                  x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0 translate-y-2"
@@ -178,7 +187,7 @@
                         <span class="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:0.15s]"></span>
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.3s]"></span>
                     </div>
-                    <span class="text-xs font-medium text-slate-600">Escribiendo...</span>
+                    <span class="text-xs font-medium text-slate-600">Pensando...</span>
                 </div>
             </div>
 

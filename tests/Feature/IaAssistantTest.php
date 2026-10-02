@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AlimentoBodega;
 use App\Models\Especie;
 use App\Models\Estanque;
 use App\Models\Finca;
@@ -78,6 +79,22 @@ class IaAssistantTest extends TestCase
         $this->assertStringContainsString('OXÍGENO DISUELTO', $reply);
         $this->assertStringContainsString('Aireadores', $reply);
         $this->assertStringContainsString('No alimentar', $reply);
+        $this->assertStringContainsString('madrugada', $reply);
+    }
+
+    public function test_chat_returns_oxigeno_3_5_chip_query_with_zootecnic_parameters(): void
+    {
+        $response = $this->actingAs($this->user)->postJson('/api/asistente-ia/chat', [
+            'message' => '¿Qué hacer si el oxígeno baja de 3.5 mg/L?',
+        ]);
+
+        $response->assertStatus(200);
+        $reply = $response->json('reply');
+        $this->assertStringContainsString('3.5 mg/L', $reply);
+        $this->assertStringContainsString('Aireadores', $reply);
+        $this->assertStringContainsString('No alimentar', $reply);
+        $this->assertStringContainsString('26°C y 30°C', $reply);
+        $this->assertStringContainsString('6.5 y 8.5', $reply);
     }
 
     public function test_chat_returns_racion_calculation_with_real_biomass(): void
@@ -108,6 +125,8 @@ class IaAssistantTest extends TestCase
         $this->assertStringContainsString('1250.5', $reply);
         $this->assertStringContainsString('% PV', $reply);
         $this->assertStringContainsString('Ración Diaria', $reply);
+        $this->assertStringContainsString('Iniciación', $reply);
+        $this->assertStringContainsString('Engorde', $reply);
     }
 
     public function test_chat_returns_lagos_listos_para_cosecha_with_actual_ponds(): void
@@ -153,6 +172,85 @@ class IaAssistantTest extends TestCase
         $this->assertStringContainsString('EST-05', $reply);
         $this->assertStringContainsString('520', $reply);
         $this->assertStringContainsString('2080', $reply);
+    }
+
+    public function test_chat_returns_censo_total_and_specific_pond_details(): void
+    {
+        $especie = Especie::firstOrCreate(
+            ['nombre_cientifico' => 'Piaractus brachypomus'],
+            ['nombre_comun' => 'Cachama Blanca', 'activo' => true]
+        );
+
+        Estanque::create([
+            'finca_id' => $this->finca->id,
+            'especie_id' => $especie->id,
+            'code' => 'EST-01',
+            'name' => 'Lago Principal',
+            'fish_population' => 5000,
+            'average_weight' => 200.00,
+            'biomass' => 1000.00,
+            'tipo_estanque' => 'Tierra',
+            'status' => 'En Crecimiento',
+        ]);
+
+        Estanque::create([
+            'finca_id' => $this->finca->id,
+            'especie_id' => $especie->id,
+            'code' => 'EST-02',
+            'name' => 'Precria 1',
+            'fish_population' => 8000,
+            'average_weight' => 25.00,
+            'biomass' => 200.00,
+            'tipo_estanque' => 'Geomembrana',
+            'status' => 'En Crecimiento',
+        ]);
+
+        // Consulta censo general
+        $respCenso = $this->actingAs($this->user)->postJson('/api/asistente-ia/chat', [
+            'message' => '¿Cuántos peces tenemos en total?',
+        ]);
+
+        $respCenso->assertStatus(200);
+        $replyCenso = $respCenso->json('reply');
+        $this->assertStringContainsString('13000', $replyCenso);
+        $this->assertStringContainsString('EST-01', $replyCenso);
+        $this->assertStringContainsString('EST-02', $replyCenso);
+
+        // Consulta estanque específico
+        $respEstanque = $this->actingAs($this->user)->postJson('/api/asistente-ia/chat', [
+            'message' => '¿Cómo está el estanque precria 1?',
+        ]);
+
+        $respEstanque->assertStatus(200);
+        $replyEstanque = $respEstanque->json('reply');
+        $this->assertStringContainsString('Precria 1', $replyEstanque);
+        $this->assertStringContainsString('8000', $replyEstanque);
+        $this->assertStringContainsString('25 g', $replyEstanque);
+    }
+
+    public function test_chat_returns_bodega_inventory_with_real_stock(): void
+    {
+        AlimentoBodega::create([
+            'finca_id' => $this->finca->id,
+            'nombre_concentrado' => 'Iniciación 45% PB',
+            'proteina_porcentaje' => 45,
+            'peso_bulto_kg' => 40.00,
+            'stock_bultos' => 15.00,
+            'stock_kilos_actual' => 600.00,
+            'umbral_alerta_bultos' => 5.00,
+            'costo_unitario_bulto' => 120000.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson('/api/asistente-ia/chat', [
+            'message' => 'Inventario disponible en bodega',
+        ]);
+
+        $response->assertStatus(200);
+        $reply = $response->json('reply');
+
+        $this->assertStringContainsString('Iniciación 45% PB', $reply);
+        $this->assertStringContainsString('600', $reply);
+        $this->assertStringContainsString('15 bultos', $reply);
     }
 
     public function test_chat_calls_google_gemini_api_when_key_is_present(): void
@@ -231,3 +329,4 @@ class IaAssistantTest extends TestCase
             ]);
     }
 }
+

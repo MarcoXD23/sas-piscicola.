@@ -194,5 +194,35 @@ class GeminiAiTest extends TestCase
         $this->assertStringContainsString('Personal Temporal / Jornaleros', $prompt);
         $this->assertStringContainsString('America/Bogota', $prompt);
         $this->assertStringContainsString('12 horas', $prompt);
+        $this->assertStringContainsString('3.5 mg/L', $prompt);
+        $this->assertStringContainsString('26°C a 30°C', $prompt);
+        $this->assertStringContainsString('6.5 a 8.5', $prompt);
+    }
+
+    public function test_gemini_service_fallback_answers_oxygen_and_nutrition_queries(): void
+    {
+        Config::set('services.gemini.api_key', null);
+
+        $user = User::factory()->admin()->create();
+
+        // 1. Oxígeno crítico
+        $responseOxigeno = $this->actingAs($user)->postJson(route('api.ai.chat'), [
+            'message' => '¿Qué hacer si el oxígeno baja de 3.5 mg/L?',
+        ]);
+
+        $responseOxigeno->assertStatus(200);
+        $this->assertStringContainsString('OXÍGENO DISUELTO', $responseOxigeno->json('reply'));
+        $this->assertStringContainsString('Aireadores', $responseOxigeno->json('reply'));
+        $this->assertStringContainsString('madrugada', $responseOxigeno->json('reply'));
+
+        // 2. Nutrición por etapas
+        $responseNutricion = $this->actingAs($user)->postJson(route('api.ai.chat'), [
+            'message' => '¿Cuál es la tabla de porcentaje de peso vivo para la alimentación?',
+        ]);
+
+        $responseNutricion->assertStatus(200);
+        $this->assertStringContainsString('Tabla de % Peso Vivo', $responseNutricion->json('reply'));
+        $this->assertStringContainsString('Iniciación', $responseNutricion->json('reply'));
+        $this->assertStringContainsString('Engorde', $responseNutricion->json('reply'));
     }
 }
